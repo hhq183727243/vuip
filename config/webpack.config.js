@@ -20,7 +20,7 @@ module.exports = function (env = {}, argv) {
         }, */
 
         entry: {
-            main: path.resolve(__dirname, '../src/Vui.js'),
+            main: path.resolve(__dirname, '../src/Vuip.js'),
         },
         mode: 'development',
         output: {
