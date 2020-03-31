@@ -17,8 +17,18 @@ function createSlots() {
  * @param {*} __option__  传递其参数
  */
 function createComponent(componentName, attr = {}, slotNodes, __option__) {
-    // console.log(__option__);
-    let componentConfig = this.$vui.config.component[componentName];
+    // 先从局部组件中获取是否有没，没有则从全局获取
+    let componentConfig = null;
+
+    if (this.$vui.config.component && this.$vui.config.component[componentName]) {
+        componentConfig = this.$vui.config.component[componentName];
+    } else {
+        componentConfig = this.$vui.Vuip.componentMap.get(componentName);
+    }
+
+    if (!componentConfig) {
+        throw new Error(`VUI 组件配置不存在`);
+    }
 
     // 父组件传参处理
     const props = { ...attr };

@@ -1,5 +1,6 @@
 import diff, { updateDom } from './VuiDiff.js';
 import VuiFunc from './VuiFunc.js';
+import parseHTML from './parseHTML';
 
 const UNCREATED = 'UNCREATED';
 const CREATED = 'CREATED';
@@ -151,6 +152,10 @@ const Lifecycle = {
     }
 }
 
+function h(html) {
+    return new VuiComponent(parseHTML(html));
+}
+
 export default class VuiComponent {
     constructor({ $parent, config, props = {}, $slots }) {
         this.cid = cid++;
@@ -167,13 +172,31 @@ export default class VuiComponent {
         this.props = props;
         this.componentState = UNCREATED; // 组件状态
         this._data = this.config.data() || {};
-        this._proxyData(this._data);
 
         for (let funName in this.config.methods) {
             this[funName] = this.config.methods[funName];
         }
 
         this._init();
+    }
+    _init() {
+        this._proxyData(this._data);
+        const code = createCode(this.config.ast || this.config.render(parseHTML, this));
+        this.$render = createFunction(code);
+        this.$vNode = this._renderVnode();
+
+        // 将组件dom缓存起来
+        componentCache[this.cid] = this;
+
+        // 自定义组件
+        new Promise((resolve, reject) => {
+            resolve();
+        }).then(() => {
+            if (typeof this.config.mounted === 'function' && this.componentState === UNCREATED) {
+                this.componentState = CREATED;
+                this.config.mounted.call(this);
+            }
+        });
     }
     _proxyData(data) {
         this.data = new Proxy(data, {
@@ -190,7 +213,13 @@ export default class VuiComponent {
         });
     }
     _reRender() {
-        const $newVNode = this.renderVnode({
+        // 当组件参数由render函数返回时，需每次都需要重新执行render函数
+        if (typeof (this.config.render) === 'function') {
+            const code = createCode(this.config.ast || this.config.render(parseHTML, this));
+            this.$render = createFunction(code);
+        }
+
+        const $newVNode = this._renderVnode({
             update: true
         });
 
@@ -204,6 +233,27 @@ export default class VuiComponent {
                 this.config.updated.call(this);
             }
         }
+    }
+    _renderVnode(option = {}) {
+        const methods = {};
+
+        Object.keys(this.config.methods).forEach(functionName => {
+            // 绑定methods作用域
+            methods[functionName] = this.config.methods[functionName].bind(this);
+        });
+
+
+        // 如果data中属性值是function则说明该属性为计算属性
+        return this.$render.call({
+            ...VuiFunc,
+            props: this.props,
+            $vui: this,
+            ...this.data,
+            ...methods
+        }, {
+            update: false,
+            ...option
+        });
     }
     // 更新数据
     setData(updateData, callback) {
@@ -224,59 +274,28 @@ export default class VuiComponent {
             }
         });
     }
-
-    _init() {
-        const code = createCode(this.config.ast);
-        this.$render = createFunction(code);
-        this.$vNode = this.renderVnode();
-
-        // 将组件dom缓存起来
-        componentCache[this.cid] = this;
-
-        // 自定义组件
-        new Promise((resolve, reject) => {
-            resolve();
-        }).then(() => {
-            if (typeof this.config.mounted === 'function' && this.componentState === UNCREATED) {
-                this.componentState = CREATED;
-                this.config.mounted.call(this);
-            }
-        });
-    }
-
     // 组件卸载
     uninstall() {
-        this.$el.parentNode.removeChild(this.$el);
+        if (this.$el.parentNode) {
+            this.$el.parentNode.removeChild(this.$el);
+        }
         this.config.willUnmount.call(this);
         this.config.unmounted.call(this);
 
+        // 从$parent的$children中删除已卸载组件
+        let index = null;
+        this.$parent.$children.forEach((item, i) => {
+            if (item === this) {
+                index = i;
+            }
+        });
+        if (index !== null) {
+            this.$parent.$children.splice(index, 1);
+        }
+
         // 子组件卸载
         this.$children.forEach(comp => {
-            comp.$el.parentNode.removeChild(comp.$el);
-            comp.config.willUnmount.call(comp);
-            comp.config.unmounted.call(comp);
-        });
-    }
-
-    renderVnode(option = {}) {
-        const methods = {};
-
-        Object.keys(this.config.methods).forEach(functionName => {
-            // 绑定methods作用域
-            methods[functionName] = this.config.methods[functionName].bind(this);
-        });
-
-
-        // 如果data中属性值是function则说明该属性为计算属性
-        return this.$render.call({
-            ...VuiFunc,
-            props: this.props,
-            $vui: this,
-            ...this.data,
-            ...methods
-        }, {
-            update: false,
-            ...option
+            comp.uninstall();
         });
     }
 }

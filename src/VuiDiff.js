@@ -54,6 +54,7 @@ function walk(oldNode, newNode, patches, point) {
     } else if (newNode === undefined) {
         patches.push({
             type: 'DELETE',
+            weight: 8, // 权重，权重越大越优先更新
             oldNode,
             point
         });
@@ -62,6 +63,7 @@ function walk(oldNode, newNode, patches, point) {
             if (oldNode.text !== newNode.text) {
                 patches.push({
                     type: 'TEXT',
+                    weight: 1, // 权重，权重越大越优先更新
                     oldNode,
                     newNode
                 });
@@ -115,6 +117,7 @@ function walk(oldNode, newNode, patches, point) {
                     if (attrsUpdate) {
                         patches.push({
                             type: 'ATTRS',
+                            weight: 2, // 权重，权重越大越优先更新
                             node: oldNode,
                             newAttrs,
                             oldAttrs
@@ -128,13 +131,16 @@ function walk(oldNode, newNode, patches, point) {
     } else if (oldNode.tagName !== newNode.tagName) {
         patches.push({
             type: 'REPLACE',
+            weight: 9, // 权重，权重越大越优先更新
             oldNode,
             newNode,
             point
         });
     }
 
-    return patches
+    return patches.sort((a, b) => {
+        return a.weight > b.weight ? -1 : 1;
+    })
 }
 
 function isDef(v) {
@@ -157,6 +163,7 @@ function diffChildren(oldChildren, newChildren, patches) {
     if (oldChildren.length < newChildren.length) {
         patches.push({
             type: 'ADD',
+            weight: 10, // 权重，权重越大越优先更新
             prevNode: oldChildren[oldChildren.length - 1],
             newNodes: newChildren.slice(oldChildren.length, newChildren.length),
             point: oldChildren
@@ -186,9 +193,12 @@ function unmountComponent(vNode) {
         });
 
         if (deleteIndex !== null) {
-            vNode.child.config.willUnmount.call(vNode.child);
-            vNode.context.$children.splice(deleteIndex, 1);
-            vNode.child.config.unmounted.call(vNode.child);
+            // vNode.child.config.willUnmount.call(vNode.child);
+            // vNode.context.$children.splice(deleteIndex, 1);
+            // vNode.child.config.unmounted.call(vNode.child);
+            vNode.child.uninstall();
+            // 如果有一个组件被卸载，则该组件下面的子组件会依次被卸载，无需再递归
+            return;
         }
     }
 
