@@ -90,9 +90,11 @@ function walk(oldNode, newNode, patches, point) {
                 });
 
                 // 如果props有变化，则子组件需要重新render
-                if (propsUpdate) {
-                    oldNode.child._reRender();
-                }
+                // if (propsUpdate) {
+                // }
+                // 父组件更新，子组件则全部更新，
+                // fix 当引入vuipx时候，state变化时并不会引起挂载到组件上面的属性的变化，但如果子组件有引用到state时就无法更新视图
+                oldNode.child._reRender();
 
                 diffChildren(oldNode.child.$slots || [], newNode.child.$slots || [], patches);
             } else {

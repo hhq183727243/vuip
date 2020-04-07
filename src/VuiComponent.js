@@ -247,6 +247,7 @@ export default class VuiComponent {
         return this.$render.call({
             ...VuiFunc,
             props: this.props,
+            state: (this.$store || {}).state,
             $vui: this,
             ...this.data,
             ...methods
@@ -256,7 +257,7 @@ export default class VuiComponent {
         });
     }
     // 更新数据
-    setData(updateData, callback) {
+    setData(updateData = {}, callback) {
         this.renderEnd = false;
 
         for (let key in updateData) {

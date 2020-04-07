@@ -6,21 +6,27 @@ function h(config) {
 
 class Vuip {
     constructor(option) {
-        const { render, id, router } = option;
+        const { render, id, router, store } = option;
 
         // 将Vui上的prototype扩展方法注入到VuiComponent实例中
         for (let key in this.__proto__) {
             VuiComponent.prototype[key] = this.__proto__[key]
         }
         VuiComponent.prototype.Vuip = Vuip;
+        VuiComponent.prototype.$store = store;
+        VuiComponent.prototype.$router = router;
 
         const $compt = render(h);
         const $app = document.querySelector(id);
         $compt.$el = $compt.$vNode.render();
+
         if (router) {
-            $compt.$router = router;
             router.$app = $compt;
         }
+        if (router) {
+            store.$app = $compt;
+        }
+
         $app.innerHTML = '';
         $app.appendChild($compt.$el);
 
