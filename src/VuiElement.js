@@ -193,9 +193,5 @@ function normalizeChildren(children) {
  * @param children 标签子节点，如果是组件则是组件实例
  * */
 export function createElement(tagName, attr, children) {
-    // 序列号节点，单遇到v-for、slot时需要序列号
-    /* if (Array.isArray(children)) {
-        children = normalizeChildren(children);
-    } */
     return new Element(tagName, attr, children, this.$vui);
 };
