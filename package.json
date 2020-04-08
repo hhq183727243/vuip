@@ -1,6 +1,6 @@
 {
   "name": "vuip",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "参考vue实现一个自己的前端框架",
   "main": "src/Vuip.js",
   "scripts": {

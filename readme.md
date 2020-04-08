@@ -1,6 +1,70 @@
 vuip
 # 参考vue实现一个自己的前端框架
-一直不明白vue的单文件组件为什么要以.vue结尾，做成.js 或 .html 不行吗？ 基于这个疑问，我决定我的单文件组件就要.html结尾,所以框架名就交vuihtml。对刚入门同学来说是不是更友好点，一个.html文件就是一个组件，而且在.html里面下写html标签也显得跟加合理
+一直不明白vue的单文件组件为什么要以.vue结尾，做成.js 或 .html 不行吗？ 基于这个疑问，我决定我的单文件组件就要.html结尾,对刚入门同学来说是不是更友好点，一个.html文件就是一个组件，而且在.html里面下写html标签也显得跟加合理
+
+## 安装
+``` bash
+npm install vuip --save
+```
+## 使用说明
+需配合vui-html-loader 使用，来编译.html组件
+``` bash
+npm install vui-html-loader --save
+```
+在你的项目的webpack的rules配置中引入vui-html-loader
+```
+rules:[
+  {
+    // 引入vui-html-loader
+    test: /\.html$/,
+    loader: 'vui-html-loader',
+    exclude: /node_modules/,
+    // 指定那些目录下的.html文件进行loader编译
+    include: [
+        path.resolve(__dirname, "../src/page"),
+        path.resolve(__dirname, "../src/components"),
+    ]
+  }
+]
+```
+开始开发你的项目
+```
+import Vuip from 'vuip';
+import Home from '@/page/home.html';
+
+new Vuip({
+    id: '#app',
+    render: h => h(Home)
+});
+```
+page/home.html
+```
+<template>
+  <div style="text-align: center;">
+    <v-for data="list">
+        <div>{item.id + '_' +item.title}</div>
+    </v-for>
+  </div>
+</template>
+<script>
+  export default {
+    name: 'Todo',
+    data() {
+      return {
+        list: [
+					{id: 1, title: 'todo1'}
+				]
+      }
+    },
+    methods: {
+
+    },
+    mounted() {
+
+    }
+  }
+</script>
+```
 
 ## 实现功能
 * { name + 1 + 2 + (sex === 1 ? '男' : '女') } 字符串模板表达式

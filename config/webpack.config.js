@@ -4,7 +4,7 @@ const plugins = require('./webpack.config.plugins');
 module.exports = function (env = {}, argv) {
     const isProduction = !!env.production;
     const devtool = isProduction ? '' : 'cheap-module-eval-source-map';
-    
+
     console.log('====================' + isProduction + '====================');
 
     return {
@@ -20,7 +20,7 @@ module.exports = function (env = {}, argv) {
         }, */
 
         entry: {
-            main: path.resolve(__dirname, '../src/Vuip.js'),
+            vuip: path.resolve(__dirname, '../src/Vuip.js'),
         },
         mode: 'development',
         output: {
