@@ -43,7 +43,7 @@ function createCode(option) {
         } else if (key.indexOf('v-on:') === 0 && type === 3) {
             // 父子组件通信
             const { name, params } = parseFun(attr[key]);
-            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return $vui.${name}(${/\w/.test(params) ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
+            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return $vuip.${name}(${/\w/.test(params) ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
         } else {
             if (key.indexOf(':') === 0) {
                 _attrStr += `"${key.replace(/^:?/, '')}": ${attr[key]},`; // :开头说明是表达式
@@ -72,11 +72,10 @@ function createCode(option) {
     } else if (type === 4) {
         // 指令
         let code = '';
+        const { data = [], test, item = 'item', index = 'index' } = attr;
         switch (tagName) {
             case 'v-for':
                 // v-for 标签下只能有一个标签节点
-                const { data = [], item = 'item', index = 'index' } = attr;
-
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
@@ -85,9 +84,18 @@ function createCode(option) {
                     throw new Error('v-for 标签下只能有一个标签节点');
                 }
                 break;
+            case 'v-while':
+                // v-while 标签下只能有一个标签节点
+                if (!children || children.length === 0) {
+                    code = '';
+                } else if (children.length === 1) {
+                    code = 'getFor(' + data + ', function(' + item + ',' + index + '){ return getIf(' + test + ', function(){ return ' + childCode[0] + ';})}, __option__)';
+                } else {
+                    throw new Error('v-while 标签下只能有一个标签节点');
+                }
+                break;
             case 'v-if':
                 // v-if 标签下只能有一个标签节点
-                const { test } = attr;
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
@@ -248,7 +256,7 @@ export default class VuiComponent {
             ...VuiFunc,
             props: this.props,
             state: (this.$store || {}).state,
-            $vui: this,
+            $vuip: this,
             ...this.data,
             ...methods
         }, {

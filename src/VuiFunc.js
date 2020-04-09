@@ -7,7 +7,7 @@ function createText(content) {
 }
 
 function createSlots() {
-    return this.$vui.$slots;
+    return this.$vuip.$slots;
 }
 
 /**
@@ -20,10 +20,10 @@ function createComponent(componentName, attr = {}, slotNodes, __option__) {
     // 先从局部组件中获取是否有没，没有则从全局获取
     let componentConfig = null;
 
-    if (this.$vui.config.component && this.$vui.config.component[componentName]) {
-        componentConfig = this.$vui.config.component[componentName];
+    if (this.$vuip.config.component && this.$vuip.config.component[componentName]) {
+        componentConfig = this.$vuip.config.component[componentName];
     } else {
-        componentConfig = this.$vui.Vuip.componentMap.get(componentName);
+        componentConfig = this.$vuip.Vuip.componentMap.get(componentName);
     }
 
     if (!componentConfig) {
@@ -38,20 +38,20 @@ function createComponent(componentName, attr = {}, slotNodes, __option__) {
     // 如果是更新（即执行_reRender时候）则不创建组件，等待diff后再确认是否创建
     if (__option__.update) {
         $component = {
-            $parent: this.$vui,
+            $parent: this.$vuip,
             config: componentConfig,
             props,
             $slots: slotNodes
         };
     } else {
         $component = new VuiComponent({
-            $parent: this.$vui,
+            $parent: this.$vuip,
             config: componentConfig,
             props,
             $slots: slotNodes
         });
 
-        this.$vui.$children.push($component);
+        this.$vuip.$children.push($component);
     }
 
     // 当前this指with所绑定的顶级作用域

@@ -177,7 +177,7 @@ function createCode(option) {
                 _name = _parseFun2.name,
                 _params = _parseFun2.params;
 
-            _attrStr += '"' + key.replace(/^v-on:?/, '') + '": function(a,b,c,d,e,f){ return $vui.' + _name + '(' + (/\w/.test(_params) ? _params + ',' : '') + 'a,b,c,d,e,f)},'; // :开头说明是表达式
+            _attrStr += '"' + key.replace(/^v-on:?/, '') + '": function(a,b,c,d,e,f){ return $vuip.' + _name + '(' + (/\w/.test(_params) ? _params + ',' : '') + 'a,b,c,d,e,f)},'; // :开头说明是表达式
         } else {
             if (key.indexOf(':') === 0) {
                 _attrStr += '"' + key.replace(/^:?/, '') + '": ' + attr[key] + ','; // :开头说明是表达式
@@ -404,7 +404,7 @@ var VuiComponent = function () {
             return this.$render.call(_extends({}, _VuiFunc2.default, {
                 props: this.props,
                 state: (this.$store || {}).state,
-                $vui: this
+                $vuip: this
             }, this.data, methods), _extends({
                 update: false
             }, option));
@@ -989,8 +989,8 @@ function normalizeChildren(children) {
  * @param option 标签属性，包括属性和事件绑定
  * @param children 标签子节点，如果是组件则是组件实例
  * */
-function createElement(tagName, attr, children) {
-    return new Element(tagName, attr, children, this.$vui);
+function createElement(tagName, option, children) {
+    return new Element(tagName, option, children, this.$vuip);
 };
 
 /***/ }),
@@ -1025,7 +1025,7 @@ function createText(content) {
 }
 
 function createSlots() {
-    return this.$vui.$slots;
+    return this.$vuip.$slots;
 }
 
 /**
@@ -1042,10 +1042,10 @@ function createComponent(componentName) {
     // 先从局部组件中获取是否有没，没有则从全局获取
     var componentConfig = null;
 
-    if (this.$vui.config.component && this.$vui.config.component[componentName]) {
-        componentConfig = this.$vui.config.component[componentName];
+    if (this.$vuip.config.component && this.$vuip.config.component[componentName]) {
+        componentConfig = this.$vuip.config.component[componentName];
     } else {
-        componentConfig = this.$vui.Vuip.componentMap.get(componentName);
+        componentConfig = this.$vuip.Vuip.componentMap.get(componentName);
     }
 
     if (!componentConfig) {
@@ -1060,20 +1060,20 @@ function createComponent(componentName) {
     // 如果是更新（即执行_reRender时候）则不创建组件，等待diff后再确认是否创建
     if (__option__.update) {
         $component = {
-            $parent: this.$vui,
+            $parent: this.$vuip,
             config: componentConfig,
             props: props,
             $slots: slotNodes
         };
     } else {
         $component = new _VuiComponent2.default({
-            $parent: this.$vui,
+            $parent: this.$vuip,
             config: componentConfig,
             props: props,
             $slots: slotNodes
         });
 
-        this.$vui.$children.push($component);
+        this.$vuip.$children.push($component);
     }
 
     // 当前this指with所绑定的顶级作用域

@@ -40,55 +40,53 @@ function invokeWithErrorHandling(
  * @param children 标签子节点，如果是组件则是组件实例
  * @param context 标签所属组件上下文
  * */
-export default class Element {
+class Element {
     constructor(tagName, option, children, context) {
         const { attrs, on } = option || {};
-        this.tagName = tagName;
-        this.context = context;
-        this.text = undefined;
-        this.children = undefined;
-        this.on = on;
-        this.attrs = attrs;
+        this.tagName = tagName; // 标签名
+        this.context = context; // dom 所在组件实例
+        this.text = undefined; // 文本节点内容
+        this.children = undefined; // 子节点
+        this.on = on; // dom事件集合
+        this.attrs = attrs; // dom属性集合
 
+        // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined) {
             this.text = children;
         } else if (tagName === 'comment') {
+            // 注释节点
             this.text = children;
         } else if (tagName.indexOf('component-') === 0) {
+            // 子组件，则children为子组件实例
             this.child = children;
         } else {
+            // 普通标签节点
             this.children = children;
         }
-
-        /* if (this.children && this.children.length > 0) {
-            let count = 0;
-            this.children.forEach(item => {
-                count += item.count;
-            });
-
-            this.count = count + this.children.length;
-        } else {
-            this.count = 0;
-        } */
     }
 
     render(parentEl) {
         let el = null;
         if (this.tagName === undefined) {
+            // 创建文本节点
             el = document.createTextNode(this.text);
             el.parentEl = parentEl;
         } else if (this.tagName === 'comment') {
+            // 创建注释节点，注释节点也是一个Dom
             el = document.createComment(this.text);
         } else if (this.tagName.indexOf('component-') === 0) {
+            // 渲染子组件
             if (!(this.child instanceof VuiComponent)) {
                 this.child = new VuiComponent(this.child);
                 this.child.$parent.$children.push(this.child);
             }
             el = this.child.$vNode.render();
         } else {
-            el = (this.tagName === 'fragment' || this.tagName === 'slot') ? document.createDocumentFragment() : document.createElement(this.tagName);
+            // 普通标签节点
+            el = document.createElement(this.tagName);
         }
 
+        // 将组件顶级节点挂载到组件实例上，用于后面组件卸载移除对应dom操作
         if (!this.context.$el) {
             this.context.$el = el;
         }
@@ -128,15 +126,6 @@ export default class Element {
                 }
             }
         });
-
-        if (this.tagName === 'slot') {
-            this.context.$slots.forEach(child => {
-                child = (child instanceof Element) ? child.render() : document.createTextNode(child)
-                // 添加子元素到当前元素
-                el.appendChild(child)
-            });
-        }
-
         return el;
     }
     // 更新节点属性
@@ -192,6 +181,7 @@ function normalizeChildren(children) {
  * @param option 标签属性，包括属性和事件绑定
  * @param children 标签子节点，如果是组件则是组件实例
  * */
-export function createElement(tagName, attr, children) {
-    return new Element(tagName, attr, children, this.$vui);
+export function createElement(tagName, option, children) {
+    // 返回虚拟Dom实例
+    return new Element(tagName, option, children, this.$vuip);
 };
