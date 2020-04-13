@@ -79,9 +79,9 @@ function getFor(data, callback, __option__) {
 function getIf(condition, callback) {
     return !!(condition) ? callback() : createElement.call(this, 'comment', null, condition);
 }
-function getElseIf(prevCondition, condition, callback) {
-    // 如果上一个条件满足，则直接返回注释
-    if (prevCondition) {
+function getElseIf(prevConditions, condition, callback) {
+    // 如果之前任一条件满足，则直接返回注释
+    if (prevConditions.includes(true)) {
         return createElement.call(this, 'comment', null, 'else-if');
     }
     return !!(condition) ? callback() : createElement.call(this, 'comment', null, condition);

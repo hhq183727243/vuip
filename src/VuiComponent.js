@@ -25,6 +25,8 @@ function parseFun(value) {
     }
 }
 
+// v-if v-elseif 系列中只要之前条件满足一个，之后都不渲染
+let conditions = [];
 /**
  * 构建创建dom代码
  * @param option 当前节点配置
@@ -33,9 +35,6 @@ function parseFun(value) {
 function createCode(option, prevOption) {
     const { type, content, tagName, attr = {}, children } = option;
     const childCode = [];
-
-
-    const length = (children || []).length;
 
     (children || []).forEach((item, index) => {
         childCode.push(createCode(item, index > 0 ? children[index - 1] : null));
@@ -106,6 +105,7 @@ function createCode(option, prevOption) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
+                    conditions = [];
                     code = `getIf(${test}, function(){ return ${childCode[0]};})`;
                 } else {
                     throw new Error('v-if 标签下只能有一个标签节点');
@@ -120,7 +120,8 @@ function createCode(option, prevOption) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
-                    code = `getElseIf(${prevOption.attr.test}, ${tagName === 'v-elseif' ? test : true}, function(){ return ${childCode[0]};})`;
+                    conditions.push(prevOption.attr.test);
+                    code = `getElseIf([${conditions.join(',')}], ${tagName === 'v-elseif' ? test : true}, function(){ return ${childCode[0]};})`;
                 } else {
                     throw new Error('v-elseif/else 标签下只能有一个标签节点');
                 }
