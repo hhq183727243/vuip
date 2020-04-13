@@ -147,3 +147,19 @@ yarn build
 ├── README.md
 └── package.json
 ```
+
+### 版本更新说明
+1.0.5
++ 新增v-elseif、v-else 标签
+```html
+示例
+<v-if test="list.length < 5">
+    <div>list.length < 5</div>
+</v-if>
+<v-elseif test="list.length < 6">
+    <div>list.length < 6</div>
+</v-elseif>
+<v-else>
+    <div>list.length = {list.length}</div>
+</v-else>
+```

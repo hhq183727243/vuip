@@ -44,6 +44,9 @@ class Vuip {
      * @param option 组件配置，即.html单文件组件
      * */
     static component(name, option) {
+        if (name[0].toUpperCase() !== name[0]) {
+            throw new Error(`<${name}> - 组件名首个字母必须大写`);
+        }
         if (this.componentMap.get(name)) {
             throw new Error(`<${name}> - 组件名冲突，请检查组件名是否已注册`);
         }

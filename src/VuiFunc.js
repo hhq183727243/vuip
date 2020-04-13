@@ -58,6 +58,11 @@ function createComponent(componentName, attr = {}, slotNodes, __option__) {
     return createElement.call(this, `component-${$component.config.name}`, null, $component);
 }
 
+/**
+ * @param data 遍历数据源
+ * @param callback 返回v-for标签下面的子节点
+ * @param __option__ 其他参数，暂时没用
+*/
 function getFor(data, callback, __option__) {
     const vNodes = [];
     vNodes.push(createElement.call(this, 'comment', null, 'v-for'));
@@ -67,12 +72,18 @@ function getFor(data, callback, __option__) {
     });
 
     vNodes._isVlist = true;
-    // vNodes._index = __option__;
 
     return vNodes;
 }
 
 function getIf(condition, callback) {
+    return !!(condition) ? callback() : createElement.call(this, 'comment', null, condition);
+}
+function getElseIf(prevCondition, condition, callback) {
+    // 如果上一个条件满足，则直接返回注释
+    if (prevCondition) {
+        return createElement.call(this, 'comment', null, 'else-if');
+    }
     return !!(condition) ? callback() : createElement.call(this, 'comment', null, condition);
 }
 
@@ -82,5 +93,6 @@ export default {
     createComponent,
     getFor,
     getIf,
+    getElseIf,
     createElement
 }

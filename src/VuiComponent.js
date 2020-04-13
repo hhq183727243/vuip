@@ -25,13 +25,20 @@ function parseFun(value) {
     }
 }
 
-// 构建创建dom代码
-function createCode(option) {
+/**
+ * 构建创建dom代码
+ * @param option 当前节点配置
+ * @param prevOption 上一个节点,用来处理v-if, v-elseif, v-else指令
+ */
+function createCode(option, prevOption) {
     const { type, content, tagName, attr = {}, children } = option;
     const childCode = [];
 
-    (children || []).forEach(item => {
-        childCode.push(createCode(item));
+
+    const length = (children || []).length;
+
+    (children || []).forEach((item, index) => {
+        childCode.push(createCode(item, index > 0 ? children[index - 1] : null));
     });
 
     let _attrStr = '{';
@@ -61,14 +68,14 @@ function createCode(option) {
         if (tagName === 'slot') {
             return 'createSlots()';
         } else {
-            return 'createElement("' + tagName + '", ' + _objStr + ',[' + childCode.join(',') + '])';
+            return `createElement("${tagName}", ${_objStr},[${childCode.join(',')}])`;
         }
     } else if (type === 2) {
         // 文本节点
-        return 'createElement(undefined, null, ' + textParse(content.replace(/\r\n|\r|\n/g, '')) + ')';
+        return `createElement(undefined, null, ${textParse(content.replace(/\r\n|\r|\n/g, ''))})`;
     } else if (type === 3) {
         // 组件
-        return 'createComponent("' + tagName + '", ' + _attrStr + ',[' + childCode.join(',') + '], __option__)';
+        return `createComponent("${tagName}", ${_attrStr},[${childCode.join(',')}], __option__)`;
     } else if (type === 4) {
         // 指令
         let code = '';
@@ -79,7 +86,7 @@ function createCode(option) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
-                    code = 'getFor(' + data + ', function(' + item + ',' + index + '){ return ' + childCode[0] + '; }, __option__)';
+                    code = `getFor(${data}, function(${item},${index}){ return ${childCode[0]}; }, __option__)`;
                 } else {
                     throw new Error('v-for 标签下只能有一个标签节点');
                 }
@@ -89,7 +96,7 @@ function createCode(option) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
-                    code = 'getFor(' + data + ', function(' + item + ',' + index + '){ return getIf(' + test + ', function(){ return ' + childCode[0] + ';})}, __option__)';
+                    code = `getFor(${data}, function(${item},${index}){ return getIf(${test}, function(){ return ${childCode[0]};})}, __option__)`;
                 } else {
                     throw new Error('v-while 标签下只能有一个标签节点');
                 }
@@ -99,9 +106,23 @@ function createCode(option) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
-                    code = 'getIf(' + test + ', function(){ return ' + childCode[0] + ';})';
+                    code = `getIf(${test}, function(){ return ${childCode[0]};})`;
                 } else {
                     throw new Error('v-if 标签下只能有一个标签节点');
+                }
+                break;
+            case 'v-elseif':
+            case 'v-else':
+                if (!prevOption || (prevOption.tagName !== 'v-if' && prevOption.tagName !== 'v-elseif')) {
+                    throw new Error('v-elseif/else 标签下只能在v-if 或 v-elseif标签之后');
+                }
+                // v-elseif 标签下只能有一个标签节点
+                if (!children || children.length === 0) {
+                    code = '';
+                } else if (children.length === 1) {
+                    code = `getElseIf(${prevOption.attr.test}, ${tagName === 'v-elseif' ? test : true}, function(){ return ${childCode[0]};})`;
+                } else {
+                    throw new Error('v-elseif/else 标签下只能有一个标签节点');
                 }
                 break;
             default: code = ''; break;
@@ -113,7 +134,7 @@ function createCode(option) {
 // 文本解析
 function textParse(text) {
     // 匹配{ }里面内容
-    const reg = /\{\s*([\(\),\w\.:\?\+\-\*\/\s'"=!]+)\s*\}/g;
+    const reg = /\{\s*([\(\),\w\.:\?\+\-\*\/\s'"=!<>]+)\s*\}/g;
     const originText = text;
     let result;
 
@@ -164,6 +185,12 @@ function h(html) {
     return new VuiComponent(parseHTML(html));
 }
 
+/**
+ * @param $parent 父组件实例
+ * @param config 组件配置
+ * @param props 来自父组件参数
+ * @param $slots 组件插槽
+*/
 export default class VuiComponent {
     constructor({ $parent, config, props = {}, $slots }) {
         this.cid = cid++;
