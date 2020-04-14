@@ -1,8 +1,8 @@
 {
   "name": "vuip",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "参考vue实现一个自己的前端框架",
-  "main": "src/Vuip.js",
+  "main": "dist/vuip.js",
   "scripts": {
     "build": "webpack --env.production --config  ./config/webpack.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -163,3 +163,5 @@ yarn build
     <div>list.length = {list.length}</div>
 </v-else>
 ```
+1.0.6
++ 完善生命周期函数

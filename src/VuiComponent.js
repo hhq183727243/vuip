@@ -14,7 +14,7 @@ function parseFun(value) {
         throw new Error('事件绑定错误');
     }
 
-    const reg = /^(\w+)\s*\(?\s*([\w,\s]*)\s*\)?$/;
+    const reg = /^(\w+)\s*\(?\s*([\w,\.\s]*)\s*\)?$/;
     const regRes = value.match(reg);
     const name = regRes[1];
     const params = regRes[2];
@@ -105,6 +105,7 @@ function createCode(option, prevOption) {
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
+                    // 重置if、else条件集合
                     conditions = [];
                     code = `getIf(${test}, function(){ return ${childCode[0]};})`;
                 } else {
@@ -153,12 +154,14 @@ function createFunction(code) {
 
 const Lifecycle = {
     // new Vui 后第一个执行的钩子函数
-    beforeCreate() {
+    willCreate() {
 
     },
-    // 装载结束
-    mounted() {
-        console.log('mounted');
+    created(){
+
+    },
+    willMount(){
+
     },
     // 装载结束
     mounted() {
@@ -199,7 +202,7 @@ export default class VuiComponent {
             methods: {},
             data() { return {} }
         }, Lifecycle, config);
-        this.config.beforeCreate.bind(this)();
+        this.config.willCreate.bind(this)();
         this.componentName = this.config.name;
         this.$el = null;
         this.$parent = $parent;

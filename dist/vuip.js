@@ -104,8 +104,6 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Lifecycle;
-
 var _VuiDiff = __webpack_require__(/*! ./VuiDiff.js */ "./src/VuiDiff.js");
 
 var _VuiDiff2 = _interopRequireDefault(_VuiDiff);
@@ -122,8 +120,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
 var UNCREATED = 'UNCREATED';
 var CREATED = 'CREATED';
 var componentCache = {};
@@ -136,7 +132,7 @@ function parseFun(value) {
         throw new Error('事件绑定错误');
     }
 
-    var reg = /^(\w+)\s*\(?\s*([\w,\s]*)\s*\)?$/;
+    var reg = /^(\w+)\s*\(?\s*([\w,\.\s]*)\s*\)?$/;
     var regRes = value.match(reg);
     var name = regRes[1];
     var params = regRes[2];
@@ -147,8 +143,14 @@ function parseFun(value) {
     };
 }
 
-// 构建创建dom代码
-function createCode(option) {
+// v-if v-elseif 系列中只要之前条件满足一个，之后都不渲染
+var conditions = [];
+/**
+ * 构建创建dom代码
+ * @param option 当前节点配置
+ * @param prevOption 上一个节点,用来处理v-if, v-elseif, v-else指令
+ */
+function createCode(option, prevOption) {
     var type = option.type,
         content = option.content,
         tagName = option.tagName,
@@ -158,8 +160,8 @@ function createCode(option) {
 
     var childCode = [];
 
-    (children || []).forEach(function (item) {
-        childCode.push(createCode(item));
+    (children || []).forEach(function (item, index) {
+        childCode.push(createCode(item, index > 0 ? children[index - 1] : null));
     });
 
     var _attrStr = '{';
@@ -206,17 +208,17 @@ function createCode(option) {
     } else if (type === 4) {
         // 指令
         var code = '';
+        var _attr$data = attr.data,
+            data = _attr$data === undefined ? [] : _attr$data,
+            test = attr.test,
+            _attr$item = attr.item,
+            item = _attr$item === undefined ? 'item' : _attr$item,
+            _attr$index = attr.index,
+            index = _attr$index === undefined ? 'index' : _attr$index;
+
         switch (tagName) {
             case 'v-for':
                 // v-for 标签下只能有一个标签节点
-                var _attr$data = attr.data,
-                    data = _attr$data === undefined ? [] : _attr$data,
-                    _attr$item = attr.item,
-                    item = _attr$item === undefined ? 'item' : _attr$item,
-                    _attr$index = attr.index,
-                    index = _attr$index === undefined ? 'index' : _attr$index;
-
-
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
@@ -225,16 +227,41 @@ function createCode(option) {
                     throw new Error('v-for 标签下只能有一个标签节点');
                 }
                 break;
-            case 'v-if':
-                // v-if 标签下只能有一个标签节点
-                var test = attr.test;
-
+            case 'v-while':
+                // v-while 标签下只能有一个标签节点
                 if (!children || children.length === 0) {
                     code = '';
                 } else if (children.length === 1) {
+                    code = 'getFor(' + data + ', function(' + item + ',' + index + '){ return getIf(' + test + ', function(){ return ' + childCode[0] + ';})}, __option__)';
+                } else {
+                    throw new Error('v-while 标签下只能有一个标签节点');
+                }
+                break;
+            case 'v-if':
+                // v-if 标签下只能有一个标签节点
+                if (!children || children.length === 0) {
+                    code = '';
+                } else if (children.length === 1) {
+                    // 重置if、else条件集合
+                    conditions = [];
                     code = 'getIf(' + test + ', function(){ return ' + childCode[0] + ';})';
                 } else {
                     throw new Error('v-if 标签下只能有一个标签节点');
+                }
+                break;
+            case 'v-elseif':
+            case 'v-else':
+                if (!prevOption || prevOption.tagName !== 'v-if' && prevOption.tagName !== 'v-elseif') {
+                    throw new Error('v-elseif/else 标签下只能在v-if 或 v-elseif标签之后');
+                }
+                // v-elseif 标签下只能有一个标签节点
+                if (!children || children.length === 0) {
+                    code = '';
+                } else if (children.length === 1) {
+                    conditions.push(prevOption.attr.test);
+                    code = 'getElseIf([' + conditions.join(',') + '], ' + (tagName === 'v-elseif' ? test : true) + ', function(){ return ' + childCode[0] + ';})';
+                } else {
+                    throw new Error('v-elseif/else 标签下只能有一个标签节点');
                 }
                 break;
             default:
@@ -247,7 +274,7 @@ function createCode(option) {
 // 文本解析
 function textParse(text) {
     // 匹配{ }里面内容
-    var reg = /\{\s*([\(\),\w\.:\?\+\-\*\/\s'"=!]+)\s*\}/g;
+    var reg = /\{\s*([\(\),\w\.:\?\+\-\*\/\s'"=!<>]+)\s*\}/g;
     var originText = text;
     var result = void 0;
 
@@ -263,29 +290,48 @@ function createFunction(code) {
     return new Function('__option__', 'with(this){return ' + code + '}');
 }
 
-var Lifecycle = (_Lifecycle = {
+var Lifecycle = {
     // new Vui 后第一个执行的钩子函数
-    beforeCreate: function beforeCreate() {},
+    willCreate: function willCreate() {},
+    created: function created() {},
+    willMount: function willMount() {},
 
     // 装载结束
     mounted: function mounted() {
         console.log('mounted');
+    },
+
+    // 将要更新
+    willUpdate: function willUpdate() {
+        console.log('willUpdate');
+    },
+
+    // 更新结束
+    updated: function updated() {
+        // console.log('updated');
+    },
+
+    // 将要卸载
+    willUnmount: function willUnmount() {
+        console.log('willUnmount');
+    },
+
+    // 卸载结束
+    unmounted: function unmounted() {
+        console.log('unmounted');
     }
-}, _defineProperty(_Lifecycle, 'mounted', function mounted() {
-    console.log('mounted');
-}), _defineProperty(_Lifecycle, 'willUpdate', function willUpdate() {
-    console.log('willUpdate');
-}), _defineProperty(_Lifecycle, 'updated', function updated() {
-    // console.log('updated');
-}), _defineProperty(_Lifecycle, 'willUnmount', function willUnmount() {
-    console.log('willUnmount');
-}), _defineProperty(_Lifecycle, 'unmounted', function unmounted() {
-    console.log('unmounted');
-}), _Lifecycle);
+};
 
 function h(html) {
     return new VuiComponent((0, _parseHTML2.default)(html));
 }
+
+/**
+ * @param $parent 父组件实例
+ * @param config 组件配置
+ * @param props 来自父组件参数
+ * @param $slots 组件插槽
+*/
 
 var VuiComponent = function () {
     function VuiComponent(_ref) {
@@ -304,7 +350,7 @@ var VuiComponent = function () {
                 return {};
             }
         }, Lifecycle, config);
-        this.config.beforeCreate.bind(this)();
+        this.config.willCreate.bind(this)();
         this.componentName = this.config.name;
         this.$el = null;
         this.$parent = $parent;
@@ -825,32 +871,26 @@ var Element = function () {
             attrs = _ref.attrs,
             on = _ref.on;
 
-        this.tagName = tagName;
-        this.context = context;
-        this.text = undefined;
-        this.children = undefined;
-        this.on = on;
-        this.attrs = attrs;
+        this.tagName = tagName; // 标签名
+        this.context = context; // dom 所在组件实例
+        this.text = undefined; // 文本节点内容
+        this.children = undefined; // 子节点
+        this.on = on; // dom事件集合
+        this.attrs = attrs; // dom属性集合
 
+        // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined) {
             this.text = children;
         } else if (tagName === 'comment') {
+            // 注释节点
             this.text = children;
         } else if (tagName.indexOf('component-') === 0) {
+            // 子组件，则children为子组件实例
             this.child = children;
         } else {
+            // 普通标签节点
             this.children = children;
         }
-
-        /* if (this.children && this.children.length > 0) {
-            let count = 0;
-            this.children.forEach(item => {
-                count += item.count;
-            });
-              this.count = count + this.children.length;
-        } else {
-            this.count = 0;
-        } */
     }
 
     _createClass(Element, [{
@@ -860,20 +900,25 @@ var Element = function () {
 
             var el = null;
             if (this.tagName === undefined) {
+                // 创建文本节点
                 el = document.createTextNode(this.text);
                 el.parentEl = parentEl;
             } else if (this.tagName === 'comment') {
+                // 创建注释节点，注释节点也是一个Dom
                 el = document.createComment(this.text);
             } else if (this.tagName.indexOf('component-') === 0) {
+                // 渲染子组件
                 if (!(this.child instanceof _VuiComponent2.default)) {
                     this.child = new _VuiComponent2.default(this.child);
                     this.child.$parent.$children.push(this.child);
                 }
                 el = this.child.$vNode.render();
             } else {
-                el = this.tagName === 'fragment' || this.tagName === 'slot' ? document.createDocumentFragment() : document.createElement(this.tagName);
+                // 普通标签节点
+                el = document.createElement(this.tagName);
             }
 
+            // 将组件顶级节点挂载到组件实例上，用于后面组件卸载移除对应dom操作
             if (!this.context.$el) {
                 this.context.$el = el;
             }
@@ -913,15 +958,6 @@ var Element = function () {
                     }
                 }
             });
-
-            if (this.tagName === 'slot') {
-                this.context.$slots.forEach(function (child) {
-                    child = child instanceof Element ? child.render() : document.createTextNode(child);
-                    // 添加子元素到当前元素
-                    el.appendChild(child);
-                });
-            }
-
             return el;
         }
         // 更新节点属性
@@ -961,9 +997,6 @@ var Element = function () {
     return Element;
 }();
 
-exports.default = Element;
-
-
 function normalizeChildren(children) {
     var arr = [];
 
@@ -990,6 +1023,7 @@ function normalizeChildren(children) {
  * @param children 标签子节点，如果是组件则是组件实例
  * */
 function createElement(tagName, option, children) {
+    // 返回虚拟Dom实例
     return new Element(tagName, option, children, this.$vuip);
 };
 
@@ -1080,6 +1114,11 @@ function createComponent(componentName) {
     return _VuiElement.createElement.call(this, 'component-' + $component.config.name, null, $component);
 }
 
+/**
+ * @param data 遍历数据源
+ * @param callback 返回v-for标签下面的子节点
+ * @param __option__ 其他参数，暂时没用
+*/
 function getFor(data, callback, __option__) {
     var vNodes = [];
     vNodes.push(_VuiElement.createElement.call(this, 'comment', null, 'v-for'));
@@ -1089,12 +1128,18 @@ function getFor(data, callback, __option__) {
     });
 
     vNodes._isVlist = true;
-    // vNodes._index = __option__;
 
     return vNodes;
 }
 
 function getIf(condition, callback) {
+    return !!condition ? callback() : _VuiElement.createElement.call(this, 'comment', null, condition);
+}
+function getElseIf(prevConditions, condition, callback) {
+    // 如果之前任一条件满足，则直接返回注释
+    if (prevConditions.includes(true)) {
+        return _VuiElement.createElement.call(this, 'comment', null, 'else-if');
+    }
     return !!condition ? callback() : _VuiElement.createElement.call(this, 'comment', null, condition);
 }
 
@@ -1104,6 +1149,7 @@ exports.default = {
     createComponent: createComponent,
     getFor: getFor,
     getIf: getIf,
+    getElseIf: getElseIf,
     createElement: _VuiElement.createElement
 };
 
@@ -1190,6 +1236,9 @@ var Vuip = function () {
     }, {
         key: 'component',
         value: function component(name, option) {
+            if (name[0].toUpperCase() !== name[0]) {
+                throw new Error('<' + name + '> - \u7EC4\u4EF6\u540D\u9996\u4E2A\u5B57\u6BCD\u5FC5\u987B\u5927\u5199');
+            }
             if (this.componentMap.get(name)) {
                 throw new Error('<' + name + '> - \u7EC4\u4EF6\u540D\u51B2\u7A81\uFF0C\u8BF7\u68C0\u67E5\u7EC4\u4EF6\u540D\u662F\u5426\u5DF2\u6CE8\u518C');
             }
