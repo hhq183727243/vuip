@@ -55,5 +55,5 @@ class Vuip {
 }
 
 Vuip.componentMap = new Map();
-
+window.Vuip = Vuip;
 export default Vuip; 

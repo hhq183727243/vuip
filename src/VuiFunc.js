@@ -34,7 +34,7 @@ function createComponent(componentName, attr = {}, slotNodes, __option__) {
     const props = { ...attr };
 
     let $component = null;
-
+    // slotNodes.push(createElement.call(this, 'comment', null, 'v-slot'));
     // 如果是更新（即执行_reRender时候）则不创建组件，等待diff后再确认是否创建
     if (__option__.update) {
         $component = {
