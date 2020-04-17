@@ -149,8 +149,8 @@ yarn build
 ```
 
 ### 版本更新说明
-1.0.5
-+ 新增v-elseif、v-else 标签
++ 1.0.5
+新增v-elseif、v-else 标签
 ```html
 示例
 <v-if test="list.length < 5">
@@ -163,5 +163,7 @@ yarn build
     <div>list.length = {list.length}</div>
 </v-else>
 ```
-1.0.6
-+ 完善生命周期函数
++ 1.0.6
+完善生命周期函数
++ 1.0.7
+打包配置修改
