@@ -59,9 +59,7 @@ var VElement = /** @class */ (function () {
         }
         else if (tagName.indexOf('component-') === 0) {
             // 子组件，则children为子组件实例
-            if (children instanceof VuiComponent_1.default) {
-                this.child = children;
-            }
+            this.child = children;
         }
         else {
             // 普通标签节点

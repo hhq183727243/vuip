@@ -81,9 +81,7 @@ export class VElement {
             this.text = children?.toString();
         } else if (tagName.indexOf('component-') === 0) {
             // 子组件，则children为子组件实例
-            if (children instanceof VuiComponent) {
-                this.child = children;
-            }
+            this.child = children as VuiComponent | ComponentOptions;
         } else {
             // 普通标签节点
             this.children = children;
