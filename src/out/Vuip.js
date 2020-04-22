@@ -1,4 +1,4 @@
-import VuiComponent from './VuiComponent.js';
+import VuiComponent from './VuiComponent';
 
 function h(config) {
     return new VuiComponent({ config });

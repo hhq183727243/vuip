@@ -185,10 +185,6 @@ const Lifecycle = {
     }
 }
 
-function h(html) {
-    return new VuiComponent(parseHTML(html));
-}
-
 /**
  * @param $parent 父组件实例
  * @param config 组件配置
