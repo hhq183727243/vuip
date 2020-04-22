@@ -56,7 +56,7 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
     }
 
     // 当前this指with所绑定的顶级作用域
-    return createElement(`component-${$component.options.name}`, {}, $component, $vuip);
+    return createElement(`component-${componentConfig.name}`, {}, $component, $vuip);
 }
 
 /**

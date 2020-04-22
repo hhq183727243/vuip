@@ -1,6 +1,7 @@
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const DefinePlugin = require('webpack/lib/DefinePlugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = [
     new DefinePlugin({
@@ -13,5 +14,12 @@ module.exports = [
         root: path.resolve(__dirname, '../'), //根目录
         verbose: true, //是否启用控制台输出信息
         dry: false //设置为false,启用删除文件
-    })
+    }),
+    new CopyWebpackPlugin([
+        {
+            from: path.resolve(__dirname + '/../public'),
+            to: path.resolve(__dirname + '/../dist'),
+            ignore: ['*.jpg']
+        }
+    ])
 ]
