@@ -19,6 +19,7 @@ module.exports = [
         {
             from: path.resolve(__dirname + '/../public'),
             to: path.resolve(__dirname + '/../dist'),
+            // to: path.resolve(__dirname, '/../learn/vuip-template/node_modules/vuip/dist'),
             ignore: ['*.jpg']
         }
     ])

@@ -62,7 +62,7 @@ function createCode(option, prevOption) {
                 _attrStr += "\"" + key.replace(/^:?/, '') + "\": " + attr[key] + ","; // :开头说明是表达式
             }
             else {
-                _attrStr += "\"" + key + "\": \"" + attr[key] + "\","; // 否则是字符串
+                _attrStr += "\"" + key + "\": \"" + attr[key].replace(/\r\n|\r|\n/g, ' ') + "\","; // 否则是字符串
             }
         }
     });

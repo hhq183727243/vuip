@@ -104,7 +104,7 @@ function parseCloseTag(content: string): Res {
 
     if (regRes) {
         // 在匹配下一个闭合标签前，先判断上一个开始标签是否是自闭合标签
-        if (regRes[1] !== prevTag && selfClosingTag.includes(prevTag)) {
+        if (regRes[1] && regRes[1] !== prevTag && selfClosingTag.includes(prevTag)) {
             arr.push({
                 type: 'endTag',
                 tagName: prevTag,

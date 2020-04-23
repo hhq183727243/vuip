@@ -11,7 +11,7 @@ module.exports = function (env = {}, argv) {
             // 把所有依赖的模块合并输出到一个 bundle.js 文件
             filename: '[name].min.js',
             // 输出文件都放到 dist 目录下
-            //path: path.resolve(__dirname, './dist'),
+            // path: path.resolve(__dirname, '../../vuip-template/node_modules/vuip/dist'),
             path: path.resolve(__dirname, '../dist'),
             // publicPath: 'http://cnd.com/',
             chunkFilename: "[id].chunk.js" // 非入口文件命名规则

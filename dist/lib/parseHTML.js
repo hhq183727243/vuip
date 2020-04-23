@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var selfClosingTag = ['input', 'img', 'br', 'hr', 'source', 'keygen', 'embed', 'object', 'param', 'area', 'link', 'frame', 'col'];
 /**
 * @param content 剩余内容
 * @param next 下一次可能出现情况
@@ -27,12 +28,20 @@ function parseHtml(content, nexts) {
         }
     }
 }
+var prevTag;
 // 开始标签
 function parseOpenTag(content) {
     var reg = /^<([\w-]+)[\s\n]*>?/;
     var regRes = content.match(reg);
     var nexts = [];
     if (regRes) {
+        // 在匹配下一个开始标签前，先判断上一个开始标签是否是自闭合标签
+        if (selfClosingTag.includes(prevTag)) {
+            arr.push({
+                type: 'endTag',
+                tagName: prevTag,
+            });
+        }
         var tagType = 1; // 1:普通标签，3:组件, 4:内置标签（遍历）
         if (regRes[1][0] === regRes[1][0].toUpperCase()) {
             tagType = 3;
@@ -45,6 +54,7 @@ function parseOpenTag(content) {
             tagName: regRes[1],
             tagType: tagType // 判断是否是组件
         });
+        prevTag = regRes[1];
         if (regRes[0].indexOf('>') > -1) {
             nexts = [parseAnnotation, parseCloseTag, parseText, parseOpenTag];
         }
@@ -67,10 +77,18 @@ function parseCloseTag(content) {
     var regRes = content.match(reg);
     var nexts = [parseAnnotation, parseText, parseOpenTag, parseCloseTag];
     if (regRes) {
+        // 在匹配下一个闭合标签前，先判断上一个开始标签是否是自闭合标签
+        if (regRes[1] && regRes[1] !== prevTag && selfClosingTag.includes(prevTag)) {
+            arr.push({
+                type: 'endTag',
+                tagName: prevTag,
+            });
+        }
         arr.push({
             type: 'endTag',
             tagName: regRes[1],
         });
+        prevTag = '';
     }
     return { regRes: regRes, nexts: nexts };
 }
@@ -93,10 +111,16 @@ function parseText(content) {
     var reg = /(^[^<>][^<>]*)/; // 第一个字符不是<|>,且后面字符不包含<|>
     var regRes = content.match(reg);
     var nexts = [parseAnnotation, parseOpenTag, parseCloseTag];
-    if (regRes && regRes[1].replace(/\s/g, '') !== '') {
+    var text = '';
+    if (regRes && regRes[1]) {
+        // const nextTagStr = regRes[2]; // {list.length > 1 ? 2 : 1} < a</div> 当遇到<a 或 </a类型时说明文本匹配结束
+        text = regRes[1].substring(0, regRes[1].length - regRes[2].length);
+        regRes[0] = text;
+    }
+    if (text.replace(/\s/g, '') !== '') {
         arr.push({
             type: 'text',
-            content: regRes[1],
+            content: text,
         });
     }
     return { regRes: regRes, nexts: nexts };

@@ -4,7 +4,7 @@
   "description": "参考vue实现一个自己的前端框架",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && webpack --env.production --config  ./config/webpack.config.js",
+    "build": "webpack --env.production --config  ./config/webpack.config.js && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

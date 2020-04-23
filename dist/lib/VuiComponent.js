@@ -150,7 +150,7 @@ var VuiComponent = /** @class */ (function () {
             methods[functionName] = _this.config.methods[functionName].bind(_this);
         });
         // 如果data中属性值是function则说明该属性为计算属性
-        return this.$render.call(__assign(__assign(__assign({}, VuiFunc_1.default), { props: this.props, state: this.$store ? this.$store.state : {}, $vuip: this, data: this.data }), methods), __assign({ update: false }, option));
+        return this.$render.call(__assign(__assign(__assign(__assign({}, VuiFunc_1.default), { props: this.props, state: this.$store ? this.$store.state : {}, $vuip: this }), this.data), methods), __assign({ update: false }, option));
     };
     // 更新数据
     VuiComponent.prototype.setData = function (updateData, callback) {
