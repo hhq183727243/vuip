@@ -89,13 +89,7 @@ var VElement = /** @class */ (function () {
                     this.child.$parent.$children.push(this.child);
                 }
             }
-            if (this.child && this.child.$vNode) {
-                el = this.child.$vNode.render();
-            }
-            else {
-                el = document.createElement(this.tagName);
-                console.error('未找到子组件可渲染的节点');
-            }
+            el = this.child.$el;
         }
         else {
             // 普通标签节点

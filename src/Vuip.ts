@@ -22,8 +22,7 @@ class Vuip {
         const $compt: VuiComponent = render(h);
         const $el: HTMLElement = document.querySelector(id) || document.createElement('div');
 
-        if ($compt.$vNode) {
-            $compt.$el = $compt.$vNode.render();
+        if ($compt.$el) {
             $el.innerHTML = '';
             $el.appendChild($compt.$el);
         }

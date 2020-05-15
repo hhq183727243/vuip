@@ -33,14 +33,14 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
     if (attr === void 0) { attr = {}; }
     // 先从局部组件中获取是否有没，没有则从全局获取
     var componentConfig;
-    if ($vuip.config.component && $vuip.config.component[componentName]) {
-        componentConfig = $vuip.config.component[componentName];
+    if ($vuip.options.components && $vuip.options.components[componentName]) {
+        componentConfig = $vuip.options.components[componentName];
     }
     else {
         componentConfig = $vuip.Vuip.componentMap.get(componentName);
     }
     if (!componentConfig) {
-        throw new Error("VUI \u7EC4\u4EF6\u914D\u7F6E\u4E0D\u5B58\u5728");
+        throw new Error(componentName + " \u7EC4\u4EF6\u914D\u7F6E\u4E0D\u5B58\u5728");
     }
     // 父组件传参处理
     var props = __assign({}, attr);

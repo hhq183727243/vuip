@@ -11,7 +11,7 @@ export default class VuiComponent {
     [x: string]: any;
     cid: number;
     componentName: string;
-    config: ComponentConfig;
+    options: ComponentConfig;
     $el: Element | Text | Comment | null;
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;

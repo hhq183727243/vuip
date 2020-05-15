@@ -27,7 +27,9 @@ var parseHTML_1 = __importDefault(require("./parseHTML"));
 var VuiCreateCode_1 = __importDefault(require("./VuiCreateCode"));
 var UNCREATED = 'UNCREATED';
 var CREATED = 'CREATED';
-var componentCache = {};
+// const componentCache: {
+//     [x: string]: VuiComponent
+// } = {};
 var cid = 0;
 function createFunction(code) {
     return new Function('__option__', 'with(this){return ' + code + '}');
@@ -38,8 +40,11 @@ var lifecycleFun = function (name) {
     };
 };
 var lifecycleDefault = {
+    // new Vuip 一个钩子
     willCreate: lifecycleFun('willCreate'),
+    // new Vuip 实例属性设置完成
     created: lifecycleFun('created'),
+    // 
     willMount: lifecycleFun('willMount'),
     // 装载结束
     mounted: lifecycleFun('mounted'),
@@ -62,48 +67,53 @@ var VuiComponent = /** @class */ (function () {
     function VuiComponent(config) {
         var $parent = config.$parent, options = config.options, _a = config.props, props = _a === void 0 ? {} : _a, $slots = config.$slots;
         this.cid = cid++;
-        this.config = Object.assign({
+        this.options = Object.assign({
             methods: {},
             data: function () { return {}; },
         }, lifecycleDefault, options);
-        this.config.willCreate.bind(this)();
-        this.componentName = this.config.name;
+        this.options.willCreate.call(this);
+        this.componentName = this.options.name;
         this.$el = null;
         this.$parent = $parent;
         this.$slots = $slots;
         this.$children = []; // 子组件集合
         this.props = props;
         this.componentState = UNCREATED; // 组件状态
-        this._data = this.config.data() || {};
-        for (var funName in this.config.methods) {
-            this[funName] = this.config.methods[funName];
+        this._data = this.options.data() || {};
+        for (var funName in this.options.methods) {
+            this[funName] = this.options.methods[funName];
         }
+        this.options.created.call(this);
         this._init();
     }
     VuiComponent.prototype._init = function () {
         var _this = this;
         this._proxyData(this._data);
         var code = '';
-        if (this.config.ast) {
-            code = VuiCreateCode_1.default(this.config.ast, null);
+        if (this.options.ast) {
+            code = VuiCreateCode_1.default(this.options.ast, null);
         }
-        else if (typeof this.config.render === 'function') {
-            code = VuiCreateCode_1.default(this.config.render(parseHTML_1.default, this), null);
+        else if (typeof this.options.render === 'function') {
+            code = VuiCreateCode_1.default(this.options.render(parseHTML_1.default, this), null);
         }
         else {
             throw new Error('缺少html视图模板，无法实例化组件');
         }
         this.$render = createFunction(code);
+        this.options.willMount.call(this);
+        // 创建虚拟Dom
         this.$vNode = this._renderVnode();
+        this.$el = this.$vNode.render();
         // 将组件dom缓存起来
-        componentCache[this.cid] = this;
+        // componentCache[this.cid] = this;
         // 自定义组件
         new Promise(function (resolve, reject) {
             resolve();
         }).then(function () {
-            if (typeof _this.config.mounted === 'function' && _this.componentState === UNCREATED) {
+            if (typeof _this.options.mounted === 'function' && _this.componentState === UNCREATED) {
                 _this.componentState = CREATED;
-                _this.config.mounted.call(_this);
+                // 挂载完毕
+                _this.options.mounted.call(_this);
             }
         });
     };
@@ -123,8 +133,8 @@ var VuiComponent = /** @class */ (function () {
     };
     VuiComponent.prototype._reRender = function () {
         // 当组件参数由render函数返回时，需每次都需要重新执行render函数
-        if (typeof (this.config.render) === 'function') {
-            var code = VuiCreateCode_1.default(this.config.render(parseHTML_1.default, this), null);
+        if (typeof (this.options.render) === 'function') {
+            var code = VuiCreateCode_1.default(this.options.render(parseHTML_1.default, this), null);
             this.$render = createFunction(code);
         }
         var $newVNode = this._renderVnode({
@@ -135,8 +145,8 @@ var VuiComponent = /** @class */ (function () {
             if (patches.length) {
                 // console.log(patches);
                 VuiDiff_1.updateDom(patches);
-                if (typeof this.config.updated === 'function') {
-                    this.config.updated.call(this);
+                if (typeof this.options.updated === 'function') {
+                    this.options.updated.call(this);
                 }
             }
         }
@@ -145,9 +155,9 @@ var VuiComponent = /** @class */ (function () {
         var _this = this;
         if (option === void 0) { option = {}; }
         var methods = {};
-        Object.keys(this.config.methods).forEach(function (functionName) {
+        Object.keys(this.options.methods).forEach(function (functionName) {
             // 绑定methods作用域
-            methods[functionName] = _this.config.methods[functionName].bind(_this);
+            methods[functionName] = _this.options.methods[functionName].bind(_this);
         });
         // 如果data中属性值是function则说明该属性为计算属性
         return this.$render.call(__assign(__assign(__assign(__assign({}, VuiFunc_1.default), { props: this.props, state: this.$store ? this.$store.state : {}, $vuip: this }), this.data), methods), __assign({ update: false }, option));
@@ -165,6 +175,7 @@ var VuiComponent = /** @class */ (function () {
             resolve();
         }).then(function () {
             if (!_this.renderEnd) {
+                _this.options.willUpdate.call(_this);
                 _this._reRender();
                 _this.renderEnd = true;
                 callback && callback();
@@ -174,11 +185,11 @@ var VuiComponent = /** @class */ (function () {
     // 组件卸载
     VuiComponent.prototype.uninstall = function () {
         var _this = this;
+        this.options.willUnmount.call(this);
+        // 节点移除
         if (this.$el && this.$el.parentNode) {
             this.$el.parentNode.removeChild(this.$el);
         }
-        this.config.willUnmount.call(this);
-        this.config.unmounted.call(this);
         // 从$parent的$children中删除已卸载组件
         var index = null;
         if (this.$parent) {
@@ -195,6 +206,7 @@ var VuiComponent = /** @class */ (function () {
         this.$children.forEach(function (comp) {
             comp.uninstall();
         });
+        this.options.unmounted.call(this);
     };
     return VuiComponent;
 }());

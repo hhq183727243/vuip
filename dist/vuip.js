@@ -22,8 +22,7 @@ var Vuip = /** @class */ (function () {
         VuiComponent_1.default.prototype.$router = router;
         var $compt = render(h);
         var $el = document.querySelector(id) || document.createElement('div');
-        if ($compt.$vNode) {
-            $compt.$el = $compt.$vNode.render();
+        if ($compt.$el) {
             $el.innerHTML = '';
             $el.appendChild($compt.$el);
         }

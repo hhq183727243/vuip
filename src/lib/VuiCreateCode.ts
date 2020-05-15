@@ -1,6 +1,13 @@
 import { AstOptions } from './interface';
 
-const EVENTS = ['onclick', 'onchange', 'onscroll'];
+const EVENTS = [
+    'onclick', 'ondblclick',
+    'ondrag', 'ondragstart', 'ondragenter', 'ondragleave', 'ondragover', 'ondragend',
+    'onkeydown', 'onkeypress', 'onkeyup',
+    'onmousedown', 'onmouseup', 'onmouseover', 'onmousemove', 'onmouseout', 'onmousewheel',
+    'onchange', 'oninput', 'onblur', 'onfocus', 'onreset', 'onsubmit', 'onselect',
+    'onresize', 'onscroll'
+];
 
 // 文本解析
 function textParse(text: string): string {
@@ -69,7 +76,11 @@ function createCode(option: AstOptions, prevOption: AstOptions | null): string {
             if (key.indexOf(':') === 0) {
                 _attrStr += `"${key.replace(/^:?/, '')}": ${attr[key]},`; // :开头说明是表达式
             } else {
-                _attrStr += `"${key}": "${attr[key].replace(/\r\n|\r|\n/g, ' ')}",`; // 否则是字符串
+                if (typeof attr[key] === 'string') {
+                    _attrStr += `"${key}": "${attr[key].replace(/\r\n|\r|\n/g, ' ')}",`; // 字符串
+                } else {
+                    _attrStr += `"${key}": ${attr[key]},`; // boolean 值
+                }
             }
         }
     });

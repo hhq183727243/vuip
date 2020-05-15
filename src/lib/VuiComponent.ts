@@ -7,9 +7,9 @@ import { ComponentOptions, ComponentConfig, Lifecycle, AnyObj, OnlyFunObj } from
 
 const UNCREATED: string = 'UNCREATED';
 const CREATED: string = 'CREATED';
-const componentCache: {
-    [x: string]: VuiComponent
-} = {};
+// const componentCache: {
+//     [x: string]: VuiComponent
+// } = {};
 
 let cid = 0;
 
@@ -24,8 +24,11 @@ const lifecycleFun = (name: string) => {
 };
 
 const lifecycleDefault: Lifecycle = {
+    // new Vuip 一个钩子
     willCreate: lifecycleFun('willCreate'),
+    // new Vuip 实例属性设置完成
     created: lifecycleFun('created'),
+    // 
     willMount: lifecycleFun('willMount'),
     // 装载结束
     mounted: lifecycleFun('mounted'),
@@ -50,31 +53,31 @@ export default class VuiComponent {
         const { $parent, options, props = {}, $slots } = config;
 
         this.cid = cid++;
-        this.config = Object.assign({
+        this.options = Object.assign({
             methods: {},
             data() { return {} },
         }, lifecycleDefault, options);
 
-        this.config.willCreate.bind(this)();
-        this.componentName = this.config.name;
+        this.options.willCreate.call(this);
+        this.componentName = this.options.name;
         this.$el = null;
         this.$parent = $parent;
         this.$slots = $slots;
         this.$children = []; // 子组件集合
         this.props = props;
         this.componentState = UNCREATED; // 组件状态
-        this._data = this.config.data() || {};
+        this._data = this.options.data() || {};
 
-        for (let funName in this.config.methods) {
-            this[funName] = this.config.methods[funName];
+        for (let funName in this.options.methods) {
+            this[funName] = this.options.methods[funName];
         }
-
+        this.options.created.call(this);
         this._init();
     }
     [x: string]: any; // 动态添加属性
     cid: number;
     componentName: string;
-    config: ComponentConfig;
+    options: ComponentConfig;
     $el: Element | Text | Comment | null;
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;
@@ -86,27 +89,29 @@ export default class VuiComponent {
     _init() {
         this._proxyData(this._data);
         let code: string = '';
-        if (this.config.ast) {
-            code = createCode(this.config.ast, null);
-        } else if (typeof this.config.render === 'function') {
-            code = createCode(this.config.render(parseHTML, this), null);
+        if (this.options.ast) {
+            code = createCode(this.options.ast, null);
+        } else if (typeof this.options.render === 'function') {
+            code = createCode(this.options.render(parseHTML, this), null);
         } else {
             throw new Error('缺少html视图模板，无法实例化组件');
         }
-
         this.$render = createFunction(code);
+        this.options.willMount.call(this);
+        // 创建虚拟Dom
         this.$vNode = this._renderVnode();
-
+        this.$el = (this.$vNode as VElement).render();
         // 将组件dom缓存起来
-        componentCache[this.cid] = this;
+        // componentCache[this.cid] = this;
 
         // 自定义组件
         new Promise((resolve, reject) => {
             resolve();
         }).then(() => {
-            if (typeof this.config.mounted === 'function' && this.componentState === UNCREATED) {
+            if (typeof this.options.mounted === 'function' && this.componentState === UNCREATED) {
                 this.componentState = CREATED;
-                this.config.mounted.call(this);
+                // 挂载完毕
+                this.options.mounted.call(this);
             }
         });
     }
@@ -126,8 +131,8 @@ export default class VuiComponent {
     }
     _reRender() {
         // 当组件参数由render函数返回时，需每次都需要重新执行render函数
-        if (typeof (this.config.render) === 'function') {
-            let code: string = createCode(this.config.render(parseHTML, this), null);
+        if (typeof (this.options.render) === 'function') {
+            let code: string = createCode(this.options.render(parseHTML, this), null);
             this.$render = createFunction(code);
         }
 
@@ -142,8 +147,8 @@ export default class VuiComponent {
                 // console.log(patches);
                 updateDom(patches);
 
-                if (typeof this.config.updated === 'function') {
-                    this.config.updated.call(this);
+                if (typeof this.options.updated === 'function') {
+                    this.options.updated.call(this);
                 }
             }
         }
@@ -151,9 +156,9 @@ export default class VuiComponent {
     _renderVnode(option = {}) {
         const methods: OnlyFunObj = {};
 
-        Object.keys(this.config.methods).forEach(functionName => {
+        Object.keys(this.options.methods).forEach(functionName => {
             // 绑定methods作用域
-            methods[functionName] = this.config.methods[functionName].bind(this);
+            methods[functionName] = this.options.methods[functionName].bind(this);
         });
 
 
@@ -184,6 +189,7 @@ export default class VuiComponent {
             resolve();
         }).then(() => {
             if (!this.renderEnd) {
+                this.options.willUpdate.call(this);
                 this._reRender();
                 this.renderEnd = true;
                 callback && callback();
@@ -192,11 +198,12 @@ export default class VuiComponent {
     }
     // 组件卸载
     uninstall() {
+        this.options.willUnmount.call(this);
+
+        // 节点移除
         if (this.$el && this.$el.parentNode) {
             this.$el.parentNode.removeChild(this.$el);
         }
-        this.config.willUnmount.call(this);
-        this.config.unmounted.call(this);
 
         // 从$parent的$children中删除已卸载组件
         let index = null;
@@ -216,5 +223,7 @@ export default class VuiComponent {
         this.$children.forEach(comp => {
             comp.uninstall();
         });
+
+        this.options.unmounted.call(this);
     }
 }

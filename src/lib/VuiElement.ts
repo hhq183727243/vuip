@@ -118,12 +118,8 @@ export class VElement {
                     this.child.$parent.$children.push(this.child);
                 }
             }
-            if (this.child && this.child.$vNode) {
-                el = this.child.$vNode.render();
-            } else {
-                el = document.createElement(this.tagName);
-                console.error('未找到子组件可渲染的节点');
-            }
+
+            el = (this.child as VuiComponent).$el as HTMLElement;
         } else {
             // 普通标签节点
             el = document.createElement(this.tagName);

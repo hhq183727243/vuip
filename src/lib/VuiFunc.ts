@@ -1,6 +1,6 @@
 import { createElement, VElement } from './VuiElement';
 import VuiComponent from './VuiComponent';
-import { ComponentOptions, ComponentConfig, AstOptions, Lifecycle, AnyObj, OnlyFunObj } from './interface';
+import { ComponentOptions, ComponentConfig, AnyObj } from './interface';
 
 function createText(content: string) {
     // const dom = document.createTextNode(content.replace(/\s/g, ''));
@@ -21,14 +21,14 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
     // 先从局部组件中获取是否有没，没有则从全局获取
     let componentConfig: ComponentConfig;
 
-    if ($vuip.config.component && $vuip.config.component[componentName]) {
-        componentConfig = $vuip.config.component[componentName];
+    if ($vuip.options.components && $vuip.options.components[componentName]) {
+        componentConfig = $vuip.options.components[componentName];
     } else {
         componentConfig = $vuip.Vuip.componentMap.get(componentName);
     }
 
     if (!componentConfig) {
-        throw new Error(`VUI 组件配置不存在`);
+        throw new Error(`${componentName} 组件配置不存在`);
     }
 
     // 父组件传参处理
