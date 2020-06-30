@@ -4,7 +4,7 @@ export interface AnyObj {
     [x: string]: any;
 }
 export interface OnlyFunObj {
-    [x: string]: () => any;
+    [x: string]: Function;
 }
 export interface VuipConfig {
     render: (h: (options: Options) => VuiComponent) => VuiComponent;

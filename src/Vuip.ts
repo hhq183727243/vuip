@@ -1,5 +1,6 @@
 import VuiComponent from './lib/VuiComponent';
 import { VuipConfig, Options } from './lib/interface';
+import proxyObj from './lib/proxy';
 
 function h(options: Options): VuiComponent {
     return new VuiComponent({
@@ -19,6 +20,11 @@ class Vuip {
         VuiComponent.prototype.Vuip = Vuip;
         VuiComponent.prototype.$store = store;
         VuiComponent.prototype.$router = router;
+
+        if (store) {
+            store.state = proxyObj(store.state);
+        }
+
         const $compt: VuiComponent = render(h);
         const $el: HTMLElement = document.querySelector(id) || document.createElement('div');
 
@@ -30,7 +36,7 @@ class Vuip {
         if (router) {
             router.$app = $compt;
         }
-        if (router) {
+        if (store) {
             store.$app = $compt;
         }
 

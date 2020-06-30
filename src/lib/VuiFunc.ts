@@ -1,6 +1,6 @@
 import { createElement, VElement } from './VuiElement';
 import VuiComponent from './VuiComponent';
-import { ComponentOptions, ComponentConfig, AnyObj } from './interface';
+import { ComponentOptions, ComponentConfig, AnyObj, OnlyFunObj } from './interface';
 
 function createText(content: string) {
     // const dom = document.createTextNode(content.replace(/\s/g, ''));
@@ -89,7 +89,8 @@ function getElseIf(prevConditions: boolean[], condition: boolean, callback: () =
     return !!(condition) ? callback() : createElement('comment', null, condition.toString(), $vuip);
 }
 
-export default {
+
+const obj: OnlyFunObj = {
     createText,
     createSlots,
     createComponent,
@@ -98,3 +99,4 @@ export default {
     getElseIf,
     createElement
 }
+export default obj;

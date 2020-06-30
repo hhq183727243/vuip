@@ -142,6 +142,12 @@ export class VElement {
             })
         }
 
+        if (this.attrs && this.attrs['v-model']) {
+            el.addEventListener('input', (e: Event) => {
+                console.log(e);
+            }, false);
+        }
+
         // 处理子元素
         if (Array.isArray(this.children)) {
             this.children.forEach((child: VElement) => {

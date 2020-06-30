@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var VuiComponent_1 = __importDefault(require("./lib/VuiComponent"));
+var proxy_1 = __importDefault(require("./lib/proxy"));
 function h(options) {
     return new VuiComponent_1.default({
         options: options,
@@ -20,6 +21,9 @@ var Vuip = /** @class */ (function () {
         VuiComponent_1.default.prototype.Vuip = Vuip;
         VuiComponent_1.default.prototype.$store = store;
         VuiComponent_1.default.prototype.$router = router;
+        if (store) {
+            store.state = proxy_1.default(store.state);
+        }
         var $compt = render(h);
         var $el = document.querySelector(id) || document.createElement('div');
         if ($compt.$el) {
@@ -29,7 +33,7 @@ var Vuip = /** @class */ (function () {
         if (router) {
             router.$app = $compt;
         }
-        if (router) {
+        if (store) {
             store.$app = $compt;
         }
         return $compt;

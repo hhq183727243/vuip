@@ -108,7 +108,8 @@ function parseAttr(content) {
 }
 // 文本
 function parseText(content) {
-    var reg = /(^[^<>][^<>]*)/; // 第一个字符不是<|>,且后面字符不包含<|>
+    var reg = /(^[^<>][\s\S]*?(<\/?\w|<!--)){1}/;
+    ; // 第一个字符不是<|>,且后面字符不包含<|>
     var regRes = content.match(reg);
     var nexts = [parseAnnotation, parseOpenTag, parseCloseTag];
     var text = '';
@@ -127,7 +128,7 @@ function parseText(content) {
 }
 // 注释annotation
 function parseAnnotation(content) {
-    var reg = /(^<!\-\-[\s\S]*?\-\->)/; // 第一个字符不是<|>,且后面字符不包含<|>
+    var reg = /(^<!\-\-[\s\S]*?\-\->)/;
     var regRes = content.match(reg);
     var nexts = [parseAnnotation, parseText, parseOpenTag, parseCloseTag];
     /*  if (regRes && regRes[1].replace(/\s/g, '') !== '') {

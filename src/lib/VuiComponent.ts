@@ -1,9 +1,13 @@
 import diff, { updateDom } from './VuiDiff';
+import Depend from './Depend';
+import Watcher from './Watcher';
 import VuiFunc from './VuiFunc';
 import parseHTML from './parseHTML';
 import createCode from './VuiCreateCode';
 import { VElement } from './VuiElement';
-import { ComponentOptions, ComponentConfig, Lifecycle, AnyObj, OnlyFunObj } from './interface';
+import { ComponentOptions, ComponentConfig, Lifecycle, AnyObj } from './interface';
+import { isObject, warn, isUnd, isFunc } from './uitls';
+import proxyObj from './proxy';
 
 const UNCREATED: string = 'UNCREATED';
 const CREATED: string = 'CREATED';
@@ -19,7 +23,7 @@ function createFunction(code: string) {
 
 const lifecycleFun = (name: string) => {
     return () => {
-        console.log(name)
+        // console.log(name)
     }
 };
 
@@ -58,130 +62,218 @@ export default class VuiComponent {
             data() { return {} },
         }, lifecycleDefault, options);
 
-        this.options.willCreate.call(this);
         this.componentName = this.options.name;
+        this.watcher = null;
+        this.watchers = [];
         this.$el = null;
         this.$parent = $parent;
         this.$slots = $slots;
         this.$children = []; // 子组件集合
-        this.props = props;
+        this.$props = props;
         this.componentState = UNCREATED; // 组件状态
-        this._data = this.options.data() || {};
+        this._updateDate = {}; // 更新数据集合 
+        this.$computed = {};
+        this.$proxyRender = {
+            $vuip: this
+        }; // 代理render作用域
+        this.$proxyInstance = {}; // 代理实例
+        this.options.willCreate.call(this);
+        this._initProxyInstance();
+        this._initStore();
+        this._initProps();
+        this._initData();
+        this._initMethods();
+        this._initProxyRender();
+        this.options.created.call(this.$proxyInstance);
 
-        for (let funName in this.options.methods) {
-            this[funName] = this.options.methods[funName];
-        }
-        this.options.created.call(this);
-        this._init();
+        this._mount();
     }
+    $computed: AnyObj;
+    $proxyRender: AnyObj; // 代理对象
+    $proxyInstance: AnyObj; // 代理对象
     [x: string]: any; // 动态添加属性
     cid: number;
+    watcher: Watcher | null;
+    watchers: Array<Watcher>;
     componentName: string;
     options: ComponentConfig;
     $el: Element | Text | Comment | null;
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;
     $children: any[]
-    props: AnyObj;
+    $props: AnyObj;
     componentState: string;
     $vNode: VElement | undefined;
-    _data: AnyObj;
-    _init() {
-        this._proxyData(this._data);
+    _updateDate: AnyObj;
+    // _data: AnyObj;
+    _initProxyInstance() {
+        // 代理实例
+        this.$proxyInstance = new Proxy(this, {
+            get: (target: AnyObj, key: string, proxy: AnyObj) => {
+                if (!isUnd(target[key])) {
+                    return target[key];
+                }
+
+                if (!isUnd(target.$proxyRender[key])) {
+                    return target.$proxyRender[key];
+                }
+
+                return target[key];
+            },
+            set: (target: AnyObj, key: string, value: any, receiver: any): boolean => {
+                // throw new Error(`VUIP 不允许直接对实例赋值`);
+                target[key] = value;
+                return true;
+            }
+        });
+    }
+    // 全局状态
+    _initStore() {
+        if (this.$store) {
+            this.$proxyRender[this.$store.aliasName] = this.$store.state;
+        }
+    }
+    _initProps() {
+        this.$proxyRender.props = {};
+
+        for (let key in this.$props) {
+            this.$proxyRender.props[key] = this.$props[key];
+        }
+    }
+    _initData() {
+        let data: AnyObj = {};
+        if (typeof this.options.data === 'function') {
+            data = this.options.data();
+
+            if (!isObject(data)) {
+                warn('data 必须放回一个{}格式对象');
+                data = {};
+            }
+        } else {
+            warn('data 必须是一个函数，且返回一个{}对象');
+            data = {};
+        }
+
+        for (let key in data) {
+            if (isUnd(this.$proxyRender[key]) && isUnd(this[key])) {
+                if (isFunc(data[key])) {
+                    this.$computed[key] = data[key];
+                } else {
+                    this.$proxyRender[key] = data[key];
+                }
+            } else {
+                warn(`data 属性【${key}】与实例属性命名冲突`);
+            }
+        }
+    }
+    _initMethods() {
+        for (let funName in VuiFunc) {
+            this.$proxyRender[funName] = VuiFunc[funName];
+        }
+
+        for (let funName in this.options.methods) {
+            if (isUnd(this.$proxyRender[funName]) && isUnd(this[funName])) {
+                this.$proxyRender[funName] = this.options.methods[funName].bind(this.$proxyInstance);
+            } else {
+                warn(`methods 方法名【${funName}】与实例属性命名冲突，或在data中定义过`);
+            }
+        }
+    }
+    _initProxyRender() {
+        // 代理render作用域
+        this.$proxyRender = proxyObj(this.$proxyRender);
+
+        for (let key in this.$computed) {
+            this.$proxyRender[key] = new Watcher(this, this.$computed[key].bind(this.$proxyInstance));
+        }
+    }
+    _mount() {
+        // 构建codeStr
         let code: string = '';
         if (this.options.ast) {
             code = createCode(this.options.ast, null);
         } else if (typeof this.options.render === 'function') {
             code = createCode(this.options.render(parseHTML, this), null);
         } else {
-            throw new Error('缺少html视图模板，无法实例化组件');
+            code = createCode({ type: 1, tagName: 'comment' }, null);
+            warn('缺少html视图模板');
         }
+        // 生成render函数
         this.$render = createFunction(code);
-        this.options.willMount.call(this);
-        // 创建虚拟Dom
-        this.$vNode = this._renderVnode();
-        this.$el = (this.$vNode as VElement).render();
-        // 将组件dom缓存起来
-        // componentCache[this.cid] = this;
-
-        // 自定义组件
-        new Promise((resolve, reject) => {
-            resolve();
-        }).then(() => {
-            if (typeof this.options.mounted === 'function' && this.componentState === UNCREATED) {
-                this.componentState = CREATED;
-                // 挂载完毕
-                this.options.mounted.call(this);
-            }
-        });
+        // 装载组件
+        this._mountComponent();
     }
-    _proxyData(data: AnyObj) {
-        this.data = new Proxy(data, {
-            get: (target: AnyObj, key: string, proxy: AnyObj) => {
-                if (typeof (target[key]) === 'function') {
-                    return target[key].bind(this)();
-                }
+    _renderVnode(option = {}): VElement {
+        // 如果data中属性值是function则说明该属性为计算属性
+        // this.$proxyRender.state = this.$store ? this.$store.state : {};
 
-                return target[key];
-            },
-            set: (target, key, value, proxy) => {
-                throw new Error(`VUI 不允许直接对data赋值，否则可能会引起一些未知异常`);
-            }
-        });
-    }
-    _reRender() {
         // 当组件参数由render函数返回时，需每次都需要重新执行render函数
         if (typeof (this.options.render) === 'function') {
             let code: string = createCode(this.options.render(parseHTML, this), null);
             this.$render = createFunction(code);
         }
 
-        const $newVNode = this._renderVnode({
-            update: true
+        return this.$render.call(this.$proxyRender, {
+            update: this.componentState === CREATED, // 初次创建还是更新创建
+            ...option
         });
+    }
 
-        if (this.$vNode) {
-            const patches = diff(this.$vNode, $newVNode);
+    // 装载组件
+    _mountComponent() {
+        this.options.willMount.call(this.$proxyInstance);
 
-            if (patches.length) {
-                // console.log(patches);
-                updateDom(patches);
+        const mount = () => {
+            this._update(this._renderVnode());
+        }
 
-                if (typeof this.options.updated === 'function') {
-                    this.options.updated.call(this);
+        // 为mount添加观察者
+        new Watcher(this, mount, true);
+
+        // 将组件dom缓存起来
+        // componentCache[this.cid] = this;
+
+        // 自定义组件
+        this.componentState = CREATED;
+        // 挂载完毕
+        this.options.mounted.call(this.$proxyInstance);
+    }
+    _update(vnode: VElement) {
+        if (this.componentState === UNCREATED) {
+            // 首次render
+            this.$vNode = vnode;
+            // 创建虚拟Dom
+            this.$el = (this.$vNode as VElement).render();
+        } else {
+            // 组件更新
+            this.options.willUpdate.call(this.$proxyInstance);
+
+            const $newVNode: VElement = vnode;
+
+            if (this.$vNode) {
+                const patches = diff(this.$vNode, $newVNode);
+
+                if (patches.length) {
+                    // console.log(patches);
+                    updateDom(patches);
+
+                    if (typeof this.options.updated === 'function') {
+                        this.options.updated.call(this.$proxyInstance);
+                    }
                 }
             }
         }
     }
-    _renderVnode(option = {}) {
-        const methods: OnlyFunObj = {};
-
-        Object.keys(this.options.methods).forEach(functionName => {
-            // 绑定methods作用域
-            methods[functionName] = this.options.methods[functionName].bind(this);
-        });
-
-
-        // 如果data中属性值是function则说明该属性为计算属性
-        return this.$render.call({
-            ...VuiFunc,
-            props: this.props,
-            state: this.$store ? this.$store.state : {},
-            $vuip: this,
-            // data: this.data,
-            ...this.data,
-            ...methods
-        }, {
-            update: false,
-            ...option
-        });
-    }
     // 更新数据
-    setData(updateData: AnyObj = {}, callback: () => {}) {
+    setData(data: AnyObj = {}, callback: () => {}) {
         this.renderEnd = false;
 
-        for (let key in updateData) {
-            this._data[key] = updateData[key];
+        if (!isObject(data)) {
+            warn('setData必须接收一个{}对象参数');
+            return;
+        }
+        for (let key in data) {
+            this._updateDate[key] = data[key]; // 要更新的数据
         }
 
         // renderEnd 防止在一个事件循环中多次调用setData导致重复渲染
@@ -189,8 +281,12 @@ export default class VuiComponent {
             resolve();
         }).then(() => {
             if (!this.renderEnd) {
-                this.options.willUpdate.call(this);
-                this._reRender();
+                // this._reRender();
+                for (let key in this._updateDate) {
+                    // this.data[key] = data[key]; // 同步到this.data
+                    this.$proxyRender[key] = this._updateDate[key];
+                }
+                this._updateDate = {};
                 this.renderEnd = true;
                 callback && callback();
             }
@@ -198,7 +294,7 @@ export default class VuiComponent {
     }
     // 组件卸载
     uninstall() {
-        this.options.willUnmount.call(this);
+        this.options.willUnmount.call(this.$proxyInstance);
 
         // 节点移除
         if (this.$el && this.$el.parentNode) {
@@ -224,6 +320,6 @@ export default class VuiComponent {
             comp.uninstall();
         });
 
-        this.options.unmounted.call(this);
+        this.options.unmounted.call(this.$proxyInstance);
     }
 }

@@ -108,6 +108,11 @@ var VElement = /** @class */ (function () {
                 el.addEventListener(eventName, cut, false);
             });
         }
+        if (this.attrs && this.attrs['v-model']) {
+            el.addEventListener('input', function (e) {
+                console.log(e);
+            }, false);
+        }
         // 处理子元素
         if (Array.isArray(this.children)) {
             this.children.forEach(function (child) {

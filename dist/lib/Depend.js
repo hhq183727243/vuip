@@ -1,0 +1,32 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+// const watcherQueue = []; // watcher队列
+var Depend = /** @class */ (function () {
+    function Depend() {
+        this.uid = Depend.uid++;
+        this.subs = {}; // watcher实例集合
+        this.subsId = {}; // watcherId集合
+    }
+    Depend.prototype.addSub = function (key, w) {
+        if (this.subsId[key] === undefined) {
+            this.subsId[key] = [];
+        }
+        if (!this.subsId[key].includes(w.uid)) {
+            if (this.subs[key] === undefined) {
+                this.subs[key] = [];
+            }
+            // 添加订阅者
+            this.subs[key].push(w);
+            this.subsId[key].push(w.uid);
+            w.addDep(key, this);
+        }
+    };
+    Depend.prototype.notice = function (key) {
+        (this.subs[key] || []).forEach(function (watcher) {
+            watcher.update(key);
+        });
+    };
+    return Depend;
+}());
+Depend.uid = 0;
+exports.default = Depend;

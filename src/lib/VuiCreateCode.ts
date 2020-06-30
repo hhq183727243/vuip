@@ -67,11 +67,11 @@ function createCode(option: AstOptions, prevOption: AstOptions | null): string {
     Object.keys(attr).forEach((key, index) => {
         if (EVENTS.includes(key)) {
             const { name, params } = parseFun(attr[key]);
-            _eventStr += `"${key.replace('on', '')}": function($event){ return this.${name}(${/\w/.test(params) ? (params + ',') : ''}$event)},`;
+            _eventStr += `"${key.replace('on', '')}": function($event){ return ${name}(${/\w/.test(params) ? (params + ',') : ''}$event)},`;
         } else if (key.indexOf('v-on:') === 0 && type === 3) {
             // 父子组件通信
             const { name, params } = parseFun(attr[key]);
-            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return $vuip.${name}(${/\w/.test(params) ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
+            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return ${name}(${/\w/.test(params) ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
         } else {
             if (key.indexOf(':') === 0) {
                 _attrStr += `"${key.replace(/^:?/, '')}": ${attr[key]},`; // :开头说明是表达式

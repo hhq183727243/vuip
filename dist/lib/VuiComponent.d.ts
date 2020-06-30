@@ -1,3 +1,4 @@
+import Watcher from './Watcher';
 import { VElement } from './VuiElement';
 import { ComponentOptions, ComponentConfig, AnyObj } from './interface';
 /**
@@ -8,22 +9,33 @@ import { ComponentOptions, ComponentConfig, AnyObj } from './interface';
 */
 export default class VuiComponent {
     constructor(config: ComponentOptions);
+    $computed: AnyObj;
+    $proxyRender: AnyObj;
+    $proxyInstance: AnyObj;
     [x: string]: any;
     cid: number;
+    watcher: Watcher | null;
+    watchers: Array<Watcher>;
     componentName: string;
     options: ComponentConfig;
     $el: Element | Text | Comment | null;
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;
     $children: any[];
-    props: AnyObj;
+    $props: AnyObj;
     componentState: string;
     $vNode: VElement | undefined;
-    _data: AnyObj;
-    _init(): void;
-    _proxyData(data: AnyObj): void;
-    _reRender(): void;
-    _renderVnode(option?: {}): any;
-    setData(updateData: AnyObj | undefined, callback: () => {}): void;
+    _updateDate: AnyObj;
+    _initProxyInstance(): void;
+    _initStore(): void;
+    _initProps(): void;
+    _initData(): void;
+    _initMethods(): void;
+    _initProxyRender(): void;
+    _mount(): void;
+    _renderVnode(option?: {}): VElement;
+    _mountComponent(): void;
+    _update(vnode: VElement): void;
+    setData(data: AnyObj | undefined, callback: () => {}): void;
     uninstall(): void;
 }

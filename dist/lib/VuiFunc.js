@@ -91,7 +91,7 @@ function getElseIf(prevConditions, condition, callback, $vuip) {
     }
     return !!(condition) ? callback() : VuiElement_1.createElement('comment', null, condition.toString(), $vuip);
 }
-exports.default = {
+var obj = {
     createText: createText,
     createSlots: createSlots,
     createComponent: createComponent,
@@ -100,3 +100,4 @@ exports.default = {
     getElseIf: getElseIf,
     createElement: VuiElement_1.createElement
 };
+exports.default = obj;

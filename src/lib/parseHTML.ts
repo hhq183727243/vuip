@@ -141,7 +141,7 @@ function parseAttr(content: string): Res {
 
 // 文本
 function parseText(content: string): Res {
-    let reg: RegExp = /(^[^<>][^<>]*)/; // 第一个字符不是<|>,且后面字符不包含<|>
+    let reg: RegExp = /(^[^<>][\s\S]*?(<\/?\w|<!--)){1}/;; // 第一个字符不是<|>,且后面字符不包含<|>
     let regRes = content.match(reg);
     let nexts: FunArr = [parseAnnotation, parseOpenTag, parseCloseTag];
     let text: string = '';
@@ -164,7 +164,7 @@ function parseText(content: string): Res {
 
 // 注释annotation
 function parseAnnotation(content: string): Res {
-    let reg: RegExp = /(^<!\-\-[\s\S]*?\-\->)/; // 第一个字符不是<|>,且后面字符不包含<|>
+    let reg: RegExp = /(^<!\-\-[\s\S]*?\-\->)/;
     let regRes = content.match(reg);
     let nexts = [parseAnnotation, parseText, parseOpenTag, parseCloseTag];
 

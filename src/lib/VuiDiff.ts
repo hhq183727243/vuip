@@ -75,31 +75,36 @@ function walk(oldNode: VElement | VElement[], newNode: VElement | VElement[], pa
                 if (oldNode.tagName.indexOf('component-') === 0 && oldNode.child && newNode.child) {
                     // 如果遇到子组件
                     // props 对比
-                    const oldProps = oldNode.child.props;
-                    const newProps = newNode.child.props;
+                    const oldProps = (oldNode.child as VuiComponent).$props;
+                    const newProps = newNode.child instanceof VuiComponent ? newNode.child.$props : newNode.child.props;
                     let propsUpdate = false;
 
                     Object.keys(oldProps).forEach(key => {
                         if (oldProps[key] !== newProps[key] && typeof oldProps[key] !== 'function') {
                             propsUpdate = true;
                             oldProps[key] = newProps[key];
+                            (oldNode.child as VuiComponent).$proxyRender.props[key] = newProps[key];
                         }
 
                         // 删除 props
                         if (!Object.keys(newProps).includes(key)) {
                             propsUpdate = true;
                             delete oldProps[key]
+                            delete (oldNode.child as VuiComponent).$proxyRender.props[key]
                         }
                     });
 
                     // 如果props有变化，则子组件需要重新render
-                    // if (propsUpdate) {
-                    // }
+                    if (propsUpdate) {
+                        // oldNode.child._reRender();
+                        // (oldNode.child as VuiComponent).$proxyRender.props = oldProps;
+                    }
+
                     // 父组件更新，子组件则全部更新，
                     // fix 当引入vuipx时候，state变化时并不会引起挂载到组件上面的属性的变化，但如果子组件有引用到state时就无法更新视图
-                    if (oldNode.child instanceof VuiComponent) {
+                    /* if (oldNode.child instanceof VuiComponent) {
                         oldNode.child._reRender();
-                    }
+                    } */
 
                     diffChildren(oldNode.child.$slots || [], newNode.child.$slots || [], patches);
                 } else {
