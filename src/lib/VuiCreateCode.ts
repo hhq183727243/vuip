@@ -12,7 +12,7 @@ const EVENTS = [
 // 文本解析
 function textParse(text: string): string {
     // 匹配{ }里面内容
-    const reg = /\{\s*([\(\),\w\.:\?\+\-\*\/\s'"=!<>]+)\s*\}/g;
+    const reg = /\{\s*((?!\{|\}).+?)\s*\}/g;
     const originText = text;
     let result;
 
@@ -30,12 +30,19 @@ function parseFun(value: string): { name: string, params: string } {
     }
     let name: string = '';
     let params: string = '';
-    const reg = /^(\w+)\s*\(?\s*([\w,\.\s]*)\s*\)?$/;
+    let hasParams = false;
+    let reg = /^(\w+)\s*$/;
+
+    if (value.indexOf('(') > -1) {
+        hasParams = true;
+        reg = /^(\w+)\s*\(\s*(.*)\s*\)$/;
+    }
+
     const regRes = value.match(reg);
 
     if (regRes) {
         name = regRes[1];
-        params = regRes[2];
+        params = hasParams ? regRes[2] : '';
     }
 
     return {
@@ -44,20 +51,21 @@ function parseFun(value: string): { name: string, params: string } {
     }
 }
 
-// v-if v-elseif 系列中只要之前条件满足一个，之后都不渲染
-let conditions: string[] = [];
 /**
  * 构建创建dom代码
  * @param option 当前节点配置
  * @param prevOption 上一个节点,用来处理v-if, v-elseif, v-else指令
+ * @param conditions v-if v-elseif 系列中只要之前条件满足一个，之后都不渲染
  */
-function createCode(option: AstOptions, prevOption: AstOptions | null): string {
+function createCode(option: AstOptions, prevOption: AstOptions | null, conditions: string[]): string {
     const { type, content, tagName, attr = {}, children } = option;
     const childCode: string[] = [];
 
+    const p_conditions: string[] = []; // 保证同一个children共享一个condition
+
     if (children) {
         children.forEach((item: AstOptions, index: number) => {
-            childCode.push(createCode(item, index > 0 ? children[index - 1] : null));
+            childCode.push(createCode(item, index > 0 ? children[index - 1] : null, p_conditions));
         });
     }
 
@@ -67,11 +75,18 @@ function createCode(option: AstOptions, prevOption: AstOptions | null): string {
     Object.keys(attr).forEach((key, index) => {
         if (EVENTS.includes(key)) {
             const { name, params } = parseFun(attr[key]);
-            _eventStr += `"${key.replace('on', '')}": function($event){ return ${name}(${/\w/.test(params) ? (params + ',') : ''}$event)},`;
+            _eventStr += `"${key.replace('on', '')}": function($event){ return ${name}(${params !== '' ? (params + ',') : ''}$event)},`;
+        } else if (key === 'v-model' && type === 1) {
+            // 普通标签v-model指令，直接监听input事件
+            _eventStr += `"input": function($event){ ${attr[key]}=$event.target.value; },`;
+        } else if (key === 'v-model' && type === 3) {
+            // 组件v-model指令，需要主动执行emit('input')来触发父组件value更新
+            _attrStr += `"input": function(_v){ ${attr[key]}=_v; },`;
+            _attrStr += `"value": ${attr[key]},`;
         } else if (key.indexOf('v-on:') === 0 && type === 3) {
             // 父子组件通信
             const { name, params } = parseFun(attr[key]);
-            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return ${name}(${/\w/.test(params) ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
+            _attrStr += `"${key.replace(/^v-on:?/, '')}": function(a,b,c,d,e,f){ return ${name}(${params !== '' ? (params + ',') : ''}a,b,c,d,e,f)},`; // :开头说明是表达式
         } else {
             if (key.indexOf(':') === 0) {
                 _attrStr += `"${key.replace(/^:?/, '')}": ${attr[key]},`; // :开头说明是表达式
@@ -103,7 +118,7 @@ function createCode(option: AstOptions, prevOption: AstOptions | null): string {
         return '';
     } else if (type === 3) {
         // 组件
-        return `createComponent("${tagName}", ${_attrStr},[${childCode.join(',')}], $vuip, __option__)`;
+        return `createComponent("${tagName}", ${_objStr},[${childCode.join(',')}], $vuip, __option__)`;
     } else if (type === 4) {
         // 指令
         let code = '';
@@ -135,7 +150,7 @@ function createCode(option: AstOptions, prevOption: AstOptions | null): string {
                     code = '';
                 } else if (children.length === 1) {
                     // 重置if、else条件集合
-                    conditions = [];
+                    conditions.length = 0;
                     code = `getIf(${test}, function(){ return ${childCode[0]};}, $vuip)`;
                 } else {
                     throw new Error('v-if 标签下只能有一个标签节点');

@@ -18,7 +18,7 @@ export interface VuipConfig {
 // .html 组件导出
 export interface Options {
     ast?: AstOptions;
-    render?: (parseHTML: (content: string) => AstOptions, $vuip: VuiComponent) => AstOptions;
+    render?: (parseHTML: (content: string) => AstOptions, $vuip: AnyObj) => AstOptions;
     [x: string]: any;
 }
 

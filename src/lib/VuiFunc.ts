@@ -1,6 +1,7 @@
 import { createElement, VElement } from './VuiElement';
 import VuiComponent from './VuiComponent';
 import { ComponentOptions, ComponentConfig, AnyObj, OnlyFunObj } from './interface';
+import { isArray, isObject, isNumber, isString, warn } from './uitls';
 
 function createText(content: string) {
     // const dom = document.createTextNode(content.replace(/\s/g, ''));
@@ -21,8 +22,8 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
     // 先从局部组件中获取是否有没，没有则从全局获取
     let componentConfig: ComponentConfig;
 
-    if ($vuip.options.components && $vuip.options.components[componentName]) {
-        componentConfig = $vuip.options.components[componentName];
+    if ($vuip._options.components && $vuip._options.components[componentName]) {
+        componentConfig = $vuip._options.components[componentName];
     } else {
         componentConfig = $vuip.Vuip.componentMap.get(componentName);
     }
@@ -32,7 +33,8 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
     }
 
     // 父组件传参处理
-    const props = { ...attr };
+    const props = { ...attr.attrs };
+    const events = { ...attr.on };
 
     let $component: VuiComponent | ComponentOptions;
     // slotNodes.push(createElement.call(this, 'comment', null, 'v-slot'));
@@ -56,7 +58,7 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
     }
 
     // 当前this指with所绑定的顶级作用域
-    return createElement(`component-${componentConfig.name}`, {}, $component, $vuip);
+    return createElement(`component-${componentConfig.name}`, { on: events }, $component, $vuip);
 }
 
 /**
@@ -64,13 +66,29 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
  * @param callback 返回v-for标签下面的子节点
  * @param __option__ 其他参数，暂时没用
 */
-function getFor(data: [], callback: (item: any, i: number) => VElement, $vuip: VuiComponent, __option__: AnyObj) {
+function getFor(data: any, callback: (item: any, i: number | string) => VElement, $vuip: VuiComponent, __option__: AnyObj) {
     const vNodes: VElement[] = [];
     vNodes.push(createElement('comment', null, 'v-for', $vuip));
 
-    (data || []).forEach((item, i) => {
-        vNodes.push(callback(item, i));
-    });
+    if (isArray(data)) {
+        (data as []).forEach((item, i) => {
+            vNodes.push(callback(item, i));
+        });
+    } else if (isObject(data)) {
+        for (let key in data) {
+            vNodes.push(callback(data[key], key));
+        };
+    } else if (isNumber(data)) {
+        for (let i = 0; i < data; i++) {
+            vNodes.push(callback(i, i));
+        };
+    } else if (isString(data)) {
+        (data.split('') as []).forEach((item, i) => {
+            vNodes.push(callback(item, i));
+        });
+    } else {
+        warn(data + '为不可遍历数据')
+    }
 
     // vNodes._isVlist = true;
 

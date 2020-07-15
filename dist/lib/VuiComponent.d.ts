@@ -17,13 +17,14 @@ export default class VuiComponent {
     watcher: Watcher | null;
     watchers: Array<Watcher>;
     componentName: string;
-    options: ComponentConfig;
+    _options: ComponentConfig;
     $el: Element | Text | Comment | null;
+    $refs: AnyObj;
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;
     $children: any[];
     $props: AnyObj;
-    componentState: string;
+    _componentState: string;
     $vNode: VElement | undefined;
     _updateDate: AnyObj;
     _initProxyInstance(): void;
@@ -36,6 +37,8 @@ export default class VuiComponent {
     _renderVnode(option?: {}): VElement;
     _mountComponent(): void;
     _update(vnode: VElement): void;
+    _updating: boolean;
+    _updatedCallback: Array<Function>;
     setData(data: AnyObj | undefined, callback: () => {}): void;
     uninstall(): void;
 }

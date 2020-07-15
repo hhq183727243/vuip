@@ -57,34 +57,37 @@ export default class VuiComponent {
         const { $parent, options, props = {}, $slots } = config;
 
         this.cid = cid++;
-        this.options = Object.assign({
+        this._options = Object.assign({
             methods: {},
             data() { return {} },
         }, lifecycleDefault, options);
 
-        this.componentName = this.options.name;
+        this.componentName = this._options.name;
         this.watcher = null;
         this.watchers = [];
         this.$el = null;
+        this.$refs = {};
         this.$parent = $parent;
         this.$slots = $slots;
         this.$children = []; // 子组件集合
         this.$props = props;
-        this.componentState = UNCREATED; // 组件状态
+        this._componentState = UNCREATED; // 组件状态
         this._updateDate = {}; // 更新数据集合 
+        this._updating = false; // this.setData 是否在更新中
+        this._updatedCallback = []; // this.setData回调集合
         this.$computed = {};
         this.$proxyRender = {
             $vuip: this
         }; // 代理render作用域
         this.$proxyInstance = {}; // 代理实例
-        this.options.willCreate.call(this);
+        this._options.willCreate.call(this);
         this._initProxyInstance();
         this._initStore();
         this._initProps();
         this._initData();
         this._initMethods();
         this._initProxyRender();
-        this.options.created.call(this.$proxyInstance);
+        this._options.created.call(this.$proxyInstance);
 
         this._mount();
     }
@@ -96,13 +99,14 @@ export default class VuiComponent {
     watcher: Watcher | null;
     watchers: Array<Watcher>;
     componentName: string;
-    options: ComponentConfig;
+    _options: ComponentConfig;
     $el: Element | Text | Comment | null;
+    $refs: AnyObj; //el节点引用
     $parent: VuiComponent | undefined;
     $slots: any[] | undefined;
     $children: any[]
     $props: AnyObj;
-    componentState: string;
+    _componentState: string;
     $vNode: VElement | undefined;
     _updateDate: AnyObj;
     // _data: AnyObj;
@@ -142,8 +146,8 @@ export default class VuiComponent {
     }
     _initData() {
         let data: AnyObj = {};
-        if (typeof this.options.data === 'function') {
-            data = this.options.data();
+        if (typeof this._options.data === 'function') {
+            data = this._options.data();
 
             if (!isObject(data)) {
                 warn('data 必须放回一个{}格式对象');
@@ -171,9 +175,9 @@ export default class VuiComponent {
             this.$proxyRender[funName] = VuiFunc[funName];
         }
 
-        for (let funName in this.options.methods) {
+        for (let funName in this._options.methods) {
             if (isUnd(this.$proxyRender[funName]) && isUnd(this[funName])) {
-                this.$proxyRender[funName] = this.options.methods[funName].bind(this.$proxyInstance);
+                this.$proxyRender[funName] = this._options.methods[funName].bind(this.$proxyInstance);
             } else {
                 warn(`methods 方法名【${funName}】与实例属性命名冲突，或在data中定义过`);
             }
@@ -184,18 +188,20 @@ export default class VuiComponent {
         this.$proxyRender = proxyObj(this.$proxyRender);
 
         for (let key in this.$computed) {
-            this.$proxyRender[key] = new Watcher(this, this.$computed[key].bind(this.$proxyInstance));
+            this.$proxyRender[key] = new Watcher(this, () => {
+                return this.$computed[key].call(this.$proxyInstance)
+            });
         }
     }
     _mount() {
         // 构建codeStr
         let code: string = '';
-        if (this.options.ast) {
-            code = createCode(this.options.ast, null);
-        } else if (typeof this.options.render === 'function') {
-            code = createCode(this.options.render(parseHTML, this), null);
+        if (this._options.ast) {
+            code = createCode(this._options.ast, null, []);
+        } else if (typeof this._options.render === 'function') {
+            code = createCode(this._options.render(parseHTML, this.$proxyInstance), null, []);
         } else {
-            code = createCode({ type: 1, tagName: 'comment' }, null);
+            code = createCode({ type: 1, tagName: 'comment' }, null, []);
             warn('缺少html视图模板');
         }
         // 生成render函数
@@ -208,20 +214,20 @@ export default class VuiComponent {
         // this.$proxyRender.state = this.$store ? this.$store.state : {};
 
         // 当组件参数由render函数返回时，需每次都需要重新执行render函数
-        if (typeof (this.options.render) === 'function') {
-            let code: string = createCode(this.options.render(parseHTML, this), null);
+        if (typeof (this._options.render) === 'function') {
+            let code: string = createCode(this._options.render(parseHTML, this.$proxyInstance), null, []);
             this.$render = createFunction(code);
         }
 
         return this.$render.call(this.$proxyRender, {
-            update: this.componentState === CREATED, // 初次创建还是更新创建
+            update: this._componentState === CREATED, // 初次创建还是更新创建
             ...option
         });
     }
 
     // 装载组件
     _mountComponent() {
-        this.options.willMount.call(this.$proxyInstance);
+        this._options.willMount.call(this.$proxyInstance);
 
         const mount = () => {
             this._update(this._renderVnode());
@@ -234,19 +240,19 @@ export default class VuiComponent {
         // componentCache[this.cid] = this;
 
         // 自定义组件
-        this.componentState = CREATED;
+        this._componentState = CREATED;
         // 挂载完毕
-        this.options.mounted.call(this.$proxyInstance);
+        this._options.mounted.call(this.$proxyInstance);
     }
     _update(vnode: VElement) {
-        if (this.componentState === UNCREATED) {
+        if (this._componentState === UNCREATED) {
             // 首次render
             this.$vNode = vnode;
             // 创建虚拟Dom
             this.$el = (this.$vNode as VElement).render();
         } else {
             // 组件更新
-            this.options.willUpdate.call(this.$proxyInstance);
+            this._options.willUpdate.call(this.$proxyInstance);
 
             const $newVNode: VElement = vnode;
 
@@ -257,16 +263,18 @@ export default class VuiComponent {
                     // console.log(patches);
                     updateDom(patches);
 
-                    if (typeof this.options.updated === 'function') {
-                        this.options.updated.call(this.$proxyInstance);
+                    if (typeof this._options.updated === 'function') {
+                        this._options.updated.call(this.$proxyInstance);
                     }
                 }
             }
         }
     }
+    _updating: boolean;
+    _updatedCallback: Array<Function>;
     // 更新数据
     setData(data: AnyObj = {}, callback: () => {}) {
-        this.renderEnd = false;
+        this._updating = false;
 
         if (!isObject(data)) {
             warn('setData必须接收一个{}对象参数');
@@ -276,25 +284,41 @@ export default class VuiComponent {
             this._updateDate[key] = data[key]; // 要更新的数据
         }
 
-        // renderEnd 防止在一个事件循环中多次调用setData导致重复渲染
-        new Promise((resolve) => {
-            resolve();
-        }).then(() => {
-            if (!this.renderEnd) {
+        if (isFunc(callback)) {
+            this._updatedCallback.push(callback);
+        }
+
+        // _updating 防止在一个事件循环中多次调用setData导致重复渲染
+        if (!this._updating) {
+            this._updating = true;
+
+            new Promise((resolve) => {
+                resolve();
+            }).then(() => {
                 // this._reRender();
                 for (let key in this._updateDate) {
                     // this.data[key] = data[key]; // 同步到this.data
                     this.$proxyRender[key] = this._updateDate[key];
                 }
                 this._updateDate = {};
-                this.renderEnd = true;
-                callback && callback();
-            }
-        });
+                this._updating = false;
+                const callbacks = this._updatedCallback;
+                setTimeout(() => {
+                    callbacks.forEach(func => {
+                        try {
+                            func();
+                        } catch (error) {
+                            warn(error);
+                        }
+                    });
+                }, 0);
+                this._updatedCallback = [];
+            });
+        }
     }
     // 组件卸载
     uninstall() {
-        this.options.willUnmount.call(this.$proxyInstance);
+        this._options.willUnmount.call(this.$proxyInstance);
 
         // 节点移除
         if (this.$el && this.$el.parentNode) {
@@ -314,12 +338,14 @@ export default class VuiComponent {
                 this.$parent.$children.splice(index, 1);
             }
         }
-
+        const $children = this.$children;
+        // 如果父组件卸载，则所有子组件都会被卸载，因此为this.$children = []
+        this.$children = [];
         // 子组件卸载
-        this.$children.forEach(comp => {
+        $children.forEach(comp => {
             comp.uninstall();
         });
 
-        this.options.unmounted.call(this.$proxyInstance);
+        this._options.unmounted.call(this.$proxyInstance);
     }
 }

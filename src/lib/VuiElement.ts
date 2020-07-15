@@ -1,7 +1,7 @@
 import VuiComponent from "./VuiComponent";
 import { ComponentOptions, AnyObj } from './interface';
 
-function createFnInvoker(fns: () => {}, vm: VuiComponent) {
+function createFnInvoker(fns: Function, vm: VuiComponent) {
     function invoker() {
         var arguments$1 = arguments;
 
@@ -72,7 +72,7 @@ export class VElement {
         this.children = undefined; // 子节点
         this.on = on; // dom事件集合
         this.attrs = attrs; // dom属性集合
-
+        this.events = [];
         // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined && typeof children === 'string') {
             this.text = children;
@@ -92,16 +92,16 @@ export class VElement {
     context: VuiComponent;
     text?: string | undefined;
     children: Children;
-    on: AnyObj;
+    on: { [x: string]: Function };
     attrs: AnyObj;
     child?: VuiComponent | ComponentOptions;
     elm?: _Element;
     render(parentEl?: _Element): _Element {
         let el: _Element;
 
-        if (this.tagName === undefined && this.text) {
+        if (this.tagName === undefined) {
             // 创建文本节点
-            el = document.createTextNode(this.text);
+            el = document.createTextNode((this.text as string));
             if (parentEl) {
                 el.parentEl = parentEl;
             }
@@ -133,48 +133,68 @@ export class VElement {
         this.elm = el; // 虚拟节点对应的DOM节点
 
         this.setAttrs();
+        this.bindEvents();
 
-        // 事件绑定
-        if (this.on) {
-            Object.keys(this.on).forEach(eventName => {
-                const cut = createFnInvoker(this.on[eventName], this.context);
-                el.addEventListener(eventName, cut, false);
-            })
-        }
-
-        if (this.attrs && this.attrs['v-model']) {
+        /* if (this.attrs && this.attrs['v-model']) {
             el.addEventListener('input', (e: Event) => {
                 console.log(e);
             }, false);
-        }
+        } */
 
+        // 渲染列表
+        this.renderVList(el, this.children);
+
+        return el;
+    }
+    renderVList(parentEl: _Element, els: Children) {
         // 处理子元素
-        if (Array.isArray(this.children)) {
-            this.children.forEach((child: VElement) => {
+        if (Array.isArray(els)) {
+            els.forEach((child: VElement) => {
                 if (Array.isArray(child)) {
                     // v-for、slot为数组
                     child.forEach(_c => {
                         // 添加子元素到当前元素
-                        el.appendChild(_c.render())
+                        if (Array.isArray(_c)) {
+                            this.renderVList(parentEl, _c);
+                        } else {
+                            parentEl.appendChild(_c.render())
+                        }
                     });
                 } else {
                     // 添加子元素到当前元素
                     if (this.attrs['v-html'] && Array.isArray(this.children)) {
                         // 判断是否采用html渲染，如果是，则child.length === 1
                         if (this.children && this.children.length === 1 && child.tagName === undefined) {
-                            child.render(el);
-                            (el as HTMLElement).innerHTML = (child.text || ''); //(child.render());
+                            child.render(parentEl);
+                            (parentEl as HTMLElement).innerHTML = (child.text || ''); //(child.render());
                         } else {
                             throw new Error('v-html 标签下只能包含一个文本标签');
                         }
                     } else {
-                        el.appendChild(child.render());
+                        parentEl.appendChild(child.render());
                     }
                 }
             });
         }
+    }
+    events: Array<Function>;
+    bindEvents() {
+        // 解除事件
+        this.events.forEach(func => {
+            func();
+        });
 
-        return el;
+        // 事件绑定
+        this.events = Object.keys(this.on || {}).map(eventName => {
+            const cut = createFnInvoker(this.on[eventName], this.context);
+            const el = this.elm as HTMLElement;
+            el.addEventListener(eventName, cut, false);
+
+            // 添加事件移除操作
+            return () => {
+                el.removeEventListener(eventName, cut);
+            }
+        })
     }
     // 更新节点属性
     updateAttrs(attrs: AnyObj) {
@@ -187,10 +207,19 @@ export class VElement {
         if (this.attrs) {
             Object.keys(this.attrs).forEach(key => {
                 let val = undefined;
+
+                // ref 节点收集
+                if (key === 'ref') {
+                    this.context.$refs[this.attrs[key]] = this.elm;
+                    return;
+                }
+
                 if (this.tagName === 'input' && key === 'value') {
                     (this.elm as HTMLInputElement).value = this.attrs[key];
                     return;
-                } else if (this.tagName === 'img' && key === 'src' && this.attrs[key] && typeof this.attrs[key] === 'object') {
+                }
+
+                if (this.tagName === 'img' && key === 'src' && this.attrs[key] && typeof this.attrs[key] === 'object') {
                     val = this.attrs[key].default;
                 } else {
                     val = this.attrs[key];

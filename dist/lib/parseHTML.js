@@ -24,9 +24,14 @@ function parseHtml(content, nexts) {
     else {
         var _content = content.substring(res.regRes[0].length);
         if (_content.length > 0) {
-            parseHtml(_content, res.nexts);
+            // parseHtml(_content, res.nexts);
+            return {
+                content: _content,
+                nexts: res.nexts
+            };
         }
     }
+    return null;
 }
 var prevTag;
 // 开始标签
@@ -205,7 +210,14 @@ function trim(str) {
 var arr = [];
 function default_1(html) {
     arr = [];
-    parseHtml(trim(html), [parseOpenTag]);
+    // 解决标签太多时导致堆栈溢出问题
+    var res = {
+        content: trim(html),
+        nexts: [parseOpenTag]
+    };
+    while (res) {
+        res = parseHtml(res.content, res.nexts);
+    }
     return createVirtualTree(arr);
 }
 exports.default = default_1;

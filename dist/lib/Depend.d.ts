@@ -15,5 +15,6 @@ declare class Depend {
     subsId: KI;
     addSub(key: string, w: Watcher): void;
     notice(key: string): void;
+    removeSub(key: string, w: Watcher): void;
 }
 export default Depend;

@@ -31,11 +31,16 @@ export declare class VElement {
     context: VuiComponent;
     text?: string | undefined;
     children: Children;
-    on: AnyObj;
+    on: {
+        [x: string]: Function;
+    };
     attrs: AnyObj;
     child?: VuiComponent | ComponentOptions;
     elm?: _Element;
     render(parentEl?: _Element): _Element;
+    renderVList(parentEl: _Element, els: Children): void;
+    events: Array<Function>;
+    bindEvents(): void;
     updateAttrs(attrs: AnyObj): void;
     setAttrs(): void;
 }

@@ -5,10 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var VuiComponent_1 = __importDefault(require("./lib/VuiComponent"));
 var proxy_1 = __importDefault(require("./lib/proxy"));
-function h(options) {
+function h(options, props) {
+    if (props === void 0) { props = {}; }
     return new VuiComponent_1.default({
         options: options,
-        props: {}
+        props: props
     });
 }
 var Vuip = /** @class */ (function () {
@@ -55,6 +56,15 @@ var Vuip = /** @class */ (function () {
             throw new Error("<" + name + "> - \u7EC4\u4EF6\u540D\u51B2\u7A81\uFF0C\u8BF7\u68C0\u67E5\u7EC4\u4EF6\u540D\u662F\u5426\u5DF2\u6CE8\u518C");
         }
         this.componentMap.set(name, option);
+    };
+    // 穿件组件
+    Vuip.mountComponent = function (option, props, $parentEl) {
+        if (props === void 0) { props = {}; }
+        var $compt = h(option, props);
+        if ($compt.$el && $parentEl) {
+            $parentEl.appendChild($compt.$el);
+        }
+        return $compt;
     };
     Vuip.componentMap = new Map();
     return Vuip;

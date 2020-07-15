@@ -49,6 +49,7 @@ var VElement = /** @class */ (function () {
         this.children = undefined; // 子节点
         this.on = on; // dom事件集合
         this.attrs = attrs; // dom属性集合
+        this.events = [];
         // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined && typeof children === 'string') {
             this.text = children;
@@ -67,9 +68,8 @@ var VElement = /** @class */ (function () {
         }
     }
     VElement.prototype.render = function (parentEl) {
-        var _this = this;
         var el;
-        if (this.tagName === undefined && this.text) {
+        if (this.tagName === undefined) {
             // 创建文本节点
             el = document.createTextNode(this.text);
             if (parentEl) {
@@ -101,26 +101,31 @@ var VElement = /** @class */ (function () {
         }
         this.elm = el; // 虚拟节点对应的DOM节点
         this.setAttrs();
-        // 事件绑定
-        if (this.on) {
-            Object.keys(this.on).forEach(function (eventName) {
-                var cut = createFnInvoker(_this.on[eventName], _this.context);
-                el.addEventListener(eventName, cut, false);
-            });
-        }
-        if (this.attrs && this.attrs['v-model']) {
-            el.addEventListener('input', function (e) {
+        this.bindEvents();
+        /* if (this.attrs && this.attrs['v-model']) {
+            el.addEventListener('input', (e: Event) => {
                 console.log(e);
             }, false);
-        }
+        } */
+        // 渲染列表
+        this.renderVList(el, this.children);
+        return el;
+    };
+    VElement.prototype.renderVList = function (parentEl, els) {
+        var _this = this;
         // 处理子元素
-        if (Array.isArray(this.children)) {
-            this.children.forEach(function (child) {
+        if (Array.isArray(els)) {
+            els.forEach(function (child) {
                 if (Array.isArray(child)) {
                     // v-for、slot为数组
                     child.forEach(function (_c) {
                         // 添加子元素到当前元素
-                        el.appendChild(_c.render());
+                        if (Array.isArray(_c)) {
+                            _this.renderVList(parentEl, _c);
+                        }
+                        else {
+                            parentEl.appendChild(_c.render());
+                        }
                     });
                 }
                 else {
@@ -128,20 +133,36 @@ var VElement = /** @class */ (function () {
                     if (_this.attrs['v-html'] && Array.isArray(_this.children)) {
                         // 判断是否采用html渲染，如果是，则child.length === 1
                         if (_this.children && _this.children.length === 1 && child.tagName === undefined) {
-                            child.render(el);
-                            el.innerHTML = (child.text || ''); //(child.render());
+                            child.render(parentEl);
+                            parentEl.innerHTML = (child.text || ''); //(child.render());
                         }
                         else {
                             throw new Error('v-html 标签下只能包含一个文本标签');
                         }
                     }
                     else {
-                        el.appendChild(child.render());
+                        parentEl.appendChild(child.render());
                     }
                 }
             });
         }
-        return el;
+    };
+    VElement.prototype.bindEvents = function () {
+        var _this = this;
+        // 解除事件
+        this.events.forEach(function (func) {
+            func();
+        });
+        // 事件绑定
+        this.events = Object.keys(this.on || {}).map(function (eventName) {
+            var cut = createFnInvoker(_this.on[eventName], _this.context);
+            var el = _this.elm;
+            el.addEventListener(eventName, cut, false);
+            // 添加事件移除操作
+            return function () {
+                el.removeEventListener(eventName, cut);
+            };
+        });
     };
     // 更新节点属性
     VElement.prototype.updateAttrs = function (attrs) {
@@ -155,11 +176,16 @@ var VElement = /** @class */ (function () {
         if (this.attrs) {
             Object.keys(this.attrs).forEach(function (key) {
                 var val = undefined;
+                // ref 节点收集
+                if (key === 'ref') {
+                    _this.context.$refs[_this.attrs[key]] = _this.elm;
+                    return;
+                }
                 if (_this.tagName === 'input' && key === 'value') {
                     _this.elm.value = _this.attrs[key];
                     return;
                 }
-                else if (_this.tagName === 'img' && key === 'src' && _this.attrs[key] && typeof _this.attrs[key] === 'object') {
+                if (_this.tagName === 'img' && key === 'src' && _this.attrs[key] && typeof _this.attrs[key] === 'object') {
                     val = _this.attrs[key].default;
                 }
                 else {

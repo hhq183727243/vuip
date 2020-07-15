@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var VuiComponent_1 = __importDefault(require("./VuiComponent"));
+var uitls_1 = require("./uitls");
 function replace(arr, originItem, targetItem) {
     var index = undefined;
     arr.forEach(function (item, i) {
@@ -46,7 +47,10 @@ function levenshteinDistance(str1, str2) {
 function walk(oldNode, newNode, patches, point) {
     // 比较新旧节点
     if (Array.isArray(oldNode)) {
-        diffChildren(oldNode, Array.isArray(newNode) ? newNode : [], patches);
+        diffChildren(oldNode, Array.isArray(newNode) ? newNode : [newNode], patches);
+    }
+    else if (Array.isArray(newNode)) {
+        diffChildren(Array.isArray(oldNode) ? oldNode : [oldNode], newNode, patches);
     }
     else if (!Array.isArray(oldNode) && !Array.isArray(newNode)) {
         if (newNode === undefined) {
@@ -57,78 +61,84 @@ function walk(oldNode, newNode, patches, point) {
                 point: point
             });
         }
-        else if (oldNode.tagName === newNode.tagName) {
-            if (oldNode.tagName === undefined) {
-                if (oldNode.text !== newNode.text) {
-                    patches.push({
-                        type: 'TEXT',
-                        weight: 1,
-                        oldNode: oldNode,
-                        newNode: newNode
-                    });
+        else if (uitls_1.isUnd(oldNode.tagName) && uitls_1.isUnd(newNode.tagName)) {
+            if (oldNode.text !== newNode.text) {
+                patches.push({
+                    type: 'TEXT',
+                    weight: 1,
+                    oldNode: oldNode,
+                    newNode: newNode
+                });
+            }
+        }
+        else if (!uitls_1.isUnd(oldNode.tagName) && oldNode.tagName === newNode.tagName) {
+            if (oldNode.tagName.indexOf('component-') === 0 && oldNode.child && newNode.child) {
+                // 如果遇到子组件
+                // props 对比
+                var oldProps_1 = oldNode.child.$props;
+                var newProps_1 = newNode.child instanceof VuiComponent_1.default ? newNode.child.$props : newNode.child.props;
+                var propsUpdate_1 = false;
+                Object.keys(oldProps_1).forEach(function (key) {
+                    if (oldProps_1[key] !== newProps_1[key] && typeof oldProps_1[key] !== 'function') {
+                        propsUpdate_1 = true;
+                        oldProps_1[key] = newProps_1[key];
+                        oldNode.child.$proxyInstance.props[key] = newProps_1[key];
+                    }
+                    // 删除 props
+                    if (!Object.keys(newProps_1).includes(key)) {
+                        propsUpdate_1 = true;
+                        delete oldProps_1[key];
+                        delete oldNode.child.$proxyInstance.props[key];
+                    }
+                });
+                // 如果props有变化，则子组件需要重新render
+                if (propsUpdate_1) {
+                    // oldNode.child._reRender();
+                    // (oldNode.child as VuiComponent).$proxyRender.props = oldProps;
                 }
+                // 父组件更新，子组件则全部更新，
+                // fix 当引入vuipx时候，state变化时并不会引起挂载到组件上面的属性的变化，但如果子组件有引用到state时就无法更新视图
+                /* if (oldNode.child instanceof VuiComponent) {
+                    oldNode.child._reRender();
+                } */
+                diffChildren(oldNode.child.$slots || [], newNode.child.$slots || [], patches);
             }
             else {
-                if (oldNode.tagName.indexOf('component-') === 0 && oldNode.child && newNode.child) {
-                    // 如果遇到子组件
-                    // props 对比
-                    var oldProps_1 = oldNode.child.$props;
-                    var newProps_1 = newNode.child instanceof VuiComponent_1.default ? newNode.child.$props : newNode.child.props;
-                    var propsUpdate_1 = false;
-                    Object.keys(oldProps_1).forEach(function (key) {
-                        if (oldProps_1[key] !== newProps_1[key] && typeof oldProps_1[key] !== 'function') {
-                            propsUpdate_1 = true;
-                            oldProps_1[key] = newProps_1[key];
-                            oldNode.child.$proxyRender.props[key] = newProps_1[key];
+                if (isDef(oldNode.attrs) && isDef(newNode.attrs)) {
+                    // 属性对比
+                    var oldAttrs_1 = oldNode.attrs;
+                    var newAttrs_1 = newNode.attrs;
+                    var attrsUpdate_1 = false;
+                    Object.keys(oldAttrs_1).forEach(function (key) {
+                        if (oldAttrs_1[key] !== newAttrs_1[key]) {
+                            attrsUpdate_1 = true;
                         }
                         // 删除 props
-                        if (!Object.keys(newProps_1).includes(key)) {
-                            propsUpdate_1 = true;
-                            delete oldProps_1[key];
-                            delete oldNode.child.$proxyRender.props[key];
+                        if (!Object.keys(newAttrs_1).includes(key)) {
+                            attrsUpdate_1 = true;
                         }
                     });
                     // 如果props有变化，则子组件需要重新render
-                    if (propsUpdate_1) {
-                        // oldNode.child._reRender();
-                        // (oldNode.child as VuiComponent).$proxyRender.props = oldProps;
-                    }
-                    // 父组件更新，子组件则全部更新，
-                    // fix 当引入vuipx时候，state变化时并不会引起挂载到组件上面的属性的变化，但如果子组件有引用到state时就无法更新视图
-                    /* if (oldNode.child instanceof VuiComponent) {
-                        oldNode.child._reRender();
-                    } */
-                    diffChildren(oldNode.child.$slots || [], newNode.child.$slots || [], patches);
-                }
-                else {
-                    if (isDef(oldNode.attrs) && isDef(newNode.attrs)) {
-                        // 属性对比
-                        var oldAttrs_1 = oldNode.attrs;
-                        var newAttrs_1 = newNode.attrs;
-                        var attrsUpdate_1 = false;
-                        Object.keys(oldAttrs_1).forEach(function (key) {
-                            if (oldAttrs_1[key] !== newAttrs_1[key]) {
-                                attrsUpdate_1 = true;
-                            }
-                            // 删除 props
-                            if (!Object.keys(newAttrs_1).includes(key)) {
-                                attrsUpdate_1 = true;
-                            }
+                    if (attrsUpdate_1) {
+                        patches.push({
+                            type: 'ATTRS',
+                            weight: 2,
+                            node: oldNode,
+                            newAttrs: newAttrs_1,
+                            oldAttrs: oldAttrs_1
                         });
-                        // 如果props有变化，则子组件需要重新render
-                        if (attrsUpdate_1) {
-                            patches.push({
-                                type: 'ATTRS',
-                                weight: 2,
-                                node: oldNode,
-                                newAttrs: newAttrs_1,
-                                oldAttrs: oldAttrs_1
-                            });
-                        }
                     }
-                    if (Array.isArray(oldNode.children)) {
-                        diffChildren(oldNode.children, Array.isArray(newNode.children) ? newNode.children : [], patches);
-                    }
+                }
+                if (isDef(newNode.on)) {
+                    patches.push({
+                        type: 'EVENTS',
+                        weight: 2,
+                        node: oldNode,
+                        on: newNode.on
+                    });
+                }
+                if (Array.isArray(oldNode.children)) {
+                    diffChildren(oldNode.children, Array.isArray(newNode.children) ? newNode.children : [], patches);
                 }
             }
         }
@@ -153,12 +163,16 @@ function diffChildren(oldChildren, newChildren, patches) {
     // let prevNode = null;
     // let currentIndex = index;
     oldChildren.forEach(function (child, i) {
-        // currentIndex = (prevNode && prevNode.count) ? (prevNode.count + currentIndex + 1) : (currentIndex + 1);
-        //v-for 对比
-        /* if (isDef(child.key)) {
-        } */
-        walk(child, newChildren[i], patches, oldChildren);
-        // prevNode = child;
+        if (uitls_1.isArray(child)) {
+            walk(child, newChildren[i], patches, oldChildren);
+        }
+        else if (uitls_1.isArray(newChildren[i])) {
+            oldChildren[i] = [child];
+            walk(oldChildren[i], newChildren[i], patches, oldChildren);
+        }
+        else {
+            walk(child, newChildren[i], patches, oldChildren);
+        }
     });
     if (oldChildren.length < newChildren.length) {
         var patche = {
@@ -266,6 +280,10 @@ function updateDom(patches) {
         }
         else if (item.type === 'ATTRS' && item.node && item.newAttrs) {
             item.node.updateAttrs(item.newAttrs);
+        }
+        else if (item.type === 'EVENTS' && item.node && item.on) {
+            item.node.on = item.on;
+            item.node.bindEvents();
         }
     });
 }

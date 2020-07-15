@@ -1,4 +1,5 @@
-import { VuipConfig, Options } from './lib/interface';
+import VuiComponent from './lib/VuiComponent';
+import { VuipConfig, Options, ComponentConfig } from './lib/interface';
 declare class Vuip {
     constructor(option: VuipConfig);
     [x: string]: any;
@@ -10,6 +11,7 @@ declare class Vuip {
      * @param option 组件配置，即.html单文件组件
      * */
     static component(name: string, option: Options): void;
+    static mountComponent(option: ComponentConfig, props: {} | undefined, $parentEl: HTMLElement): VuiComponent;
 }
 declare global {
     interface Window {

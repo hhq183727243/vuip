@@ -1,6 +1,8 @@
 import VuiComponent from "./VuiComponent";
 import Depend from "./Depend";
-import { AnyObj } from "./interface";
+declare type KDep = {
+    [x: string]: Depend;
+};
 declare class Watcher {
     static uid: number;
     constructor(vm: VuiComponent, expOrFn: string | Function, renderWatcher?: boolean);
@@ -9,10 +11,12 @@ declare class Watcher {
     uid: number;
     updating: boolean;
     getter: Function;
-    depsMap: AnyObj;
+    depsMap: Map<number, KDep>;
+    newDepsMap: Map<number, KDep>;
     addDep(key: string, dep: Depend): void;
     depend(): void;
     get(): any;
+    clearDep(): void;
     update(key: string): void;
 }
 export default Watcher;

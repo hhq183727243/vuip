@@ -40,9 +40,15 @@ function parseHtml(content: string, nexts: FunArr) {
         let _content = content.substring(res.regRes[0].length);
 
         if (_content.length > 0) {
-            parseHtml(_content, res.nexts);
+            // parseHtml(_content, res.nexts);
+            return {
+                content: _content,
+                nexts: res.nexts
+            };
         }
     }
+
+    return null;
 }
 
 let prevTag: string;
@@ -252,6 +258,16 @@ function trim(str: string): string {
 let arr: Ast[] = [];
 export default function (html: string): AstOptions {
     arr = [];
-    parseHtml(trim(html), [parseOpenTag]);
+
+    // 解决标签太多时导致堆栈溢出问题
+    let res: any = {
+        content: trim(html),
+        nexts: [parseOpenTag]
+    };
+
+    while (res) {
+        res = parseHtml(res.content, res.nexts);
+    }
+
     return createVirtualTree(arr)
 };

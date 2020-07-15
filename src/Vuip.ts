@@ -1,11 +1,11 @@
 import VuiComponent from './lib/VuiComponent';
-import { VuipConfig, Options } from './lib/interface';
+import { VuipConfig, Options, ComponentConfig } from './lib/interface';
 import proxyObj from './lib/proxy';
 
-function h(options: Options): VuiComponent {
+function h(options: Options, props = {}): VuiComponent {
     return new VuiComponent({
         options,
-        props: {}
+        props
     });
 }
 
@@ -63,6 +63,17 @@ class Vuip {
             throw new Error(`<${name}> - 组件名冲突，请检查组件名是否已注册`);
         }
         this.componentMap.set(name, option);
+    }
+
+    // 创建组件
+    static mountComponent(option: ComponentConfig, props = {}, $parentEl: HTMLElement) {
+        const $compt = h(option, props);
+
+        if ($compt.$el && $parentEl) {
+            $parentEl.appendChild($compt.$el);
+        }
+
+        return $compt;
     }
 }
 

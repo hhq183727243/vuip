@@ -37,7 +37,10 @@ function proxyObj(obj) {
         },
         set: function (target, key, value, receiver) {
             // throw new Error(`VUI 不允许直接对data赋值，否则可能会引起一些未知异常`);
-            if (typeof value === 'object' && !(value instanceof Watcher_1.default)) {
+            if (value === target[key] && uitls_1.isBase(value)) {
+                return true;
+            }
+            if (uitls_1.isObject(value) && !(value instanceof Watcher_1.default)) {
                 target[key] = proxyObj(value);
             }
             else {

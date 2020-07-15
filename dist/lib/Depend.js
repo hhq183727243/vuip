@@ -18,13 +18,24 @@ var Depend = /** @class */ (function () {
             // 添加订阅者
             this.subs[key].push(w);
             this.subsId[key].push(w.uid);
-            w.addDep(key, this);
         }
+        // 为watcher收集观察属性，然后对新旧数据进行对比，去除无效订阅
+        w.addDep(key, this);
     };
     Depend.prototype.notice = function (key) {
         (this.subs[key] || []).forEach(function (watcher) {
             watcher.update(key);
         });
+    };
+    // 移除订阅者
+    Depend.prototype.removeSub = function (key, w) {
+        if (this.subsId[key].includes(w.uid)) {
+            var index = this.subsId[key].indexOf(w.uid);
+            this.subsId[key].splice(index, 1);
+            // 删除订阅者
+            index = this.subs[key].indexOf(w);
+            this.subs[key].splice(index, 1);
+        }
     };
     return Depend;
 }());

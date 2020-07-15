@@ -16,6 +16,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var VuiElement_1 = require("./VuiElement");
 var VuiComponent_1 = __importDefault(require("./VuiComponent"));
+var uitls_1 = require("./uitls");
 function createText(content) {
     // const dom = document.createTextNode(content.replace(/\s/g, ''));
     return content;
@@ -33,8 +34,8 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
     if (attr === void 0) { attr = {}; }
     // 先从局部组件中获取是否有没，没有则从全局获取
     var componentConfig;
-    if ($vuip.options.components && $vuip.options.components[componentName]) {
-        componentConfig = $vuip.options.components[componentName];
+    if ($vuip._options.components && $vuip._options.components[componentName]) {
+        componentConfig = $vuip._options.components[componentName];
     }
     else {
         componentConfig = $vuip.Vuip.componentMap.get(componentName);
@@ -43,7 +44,8 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
         throw new Error(componentName + " \u7EC4\u4EF6\u914D\u7F6E\u4E0D\u5B58\u5728");
     }
     // 父组件传参处理
-    var props = __assign({}, attr);
+    var props = __assign({}, attr.attrs);
+    var events = __assign({}, attr.on);
     var $component;
     // slotNodes.push(createElement.call(this, 'comment', null, 'v-slot'));
     // 如果是更新（即执行_reRender时候）则不创建组件，等待diff后再确认是否创建
@@ -65,7 +67,7 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
         $vuip.$children.push($component);
     }
     // 当前this指with所绑定的顶级作用域
-    return VuiElement_1.createElement("component-" + componentConfig.name, {}, $component, $vuip);
+    return VuiElement_1.createElement("component-" + componentConfig.name, { on: events }, $component, $vuip);
 }
 /**
  * @param data 遍历数据源
@@ -75,9 +77,31 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
 function getFor(data, callback, $vuip, __option__) {
     var vNodes = [];
     vNodes.push(VuiElement_1.createElement('comment', null, 'v-for', $vuip));
-    (data || []).forEach(function (item, i) {
-        vNodes.push(callback(item, i));
-    });
+    if (uitls_1.isArray(data)) {
+        data.forEach(function (item, i) {
+            vNodes.push(callback(item, i));
+        });
+    }
+    else if (uitls_1.isObject(data)) {
+        for (var key in data) {
+            vNodes.push(callback(data[key], key));
+        }
+        ;
+    }
+    else if (uitls_1.isNumber(data)) {
+        for (var i = 0; i < data; i++) {
+            vNodes.push(callback(i, i));
+        }
+        ;
+    }
+    else if (uitls_1.isString(data)) {
+        data.split('').forEach(function (item, i) {
+            vNodes.push(callback(item, i));
+        });
+    }
+    else {
+        uitls_1.warn(data + '为不可遍历数据');
+    }
     // vNodes._isVlist = true;
     return vNodes;
 }
