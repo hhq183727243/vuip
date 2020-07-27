@@ -64,8 +64,20 @@ function createComponent(componentName, attr, slotNodes, $vuip, __option__) {
             props: props,
             $slots: slotNodes
         });
-        $vuip.$children.push($component);
+        // $vuip.$children.push($component);
     }
+    // 设置slot中组件的$parent，如：<Row><Col/></Row>,则col组件的$parent实例应该是row组件实例
+    /* if ($component instanceof VuiComponent) {
+        slotNodes.forEach(el => {
+            if (el.tagName.indexOf('component-') === 0 && ) {
+                if (el.child) {
+                    el.child.$parent = $component as VuiComponent;
+                    ($component as VuiComponent).$children.push(el.child);
+                    $vuip
+                }
+            }
+        });
+    } */
     // 当前this指with所绑定的顶级作用域
     return VuiElement_1.createElement("component-" + componentConfig.name, { on: events }, $component, $vuip);
 }

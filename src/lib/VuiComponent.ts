@@ -80,6 +80,11 @@ export default class VuiComponent {
             $vuip: this
         }; // 代理render作用域
         this.$proxyInstance = {}; // 代理实例
+
+        if (this.$parent) {
+            this.$parent.$children.push(this);
+        }
+
         this._options.willCreate.call(this);
         this._initProxyInstance();
         this._initStore();
@@ -147,7 +152,7 @@ export default class VuiComponent {
     _initData() {
         let data: AnyObj = {};
         if (typeof this._options.data === 'function') {
-            data = this._options.data();
+            data = this._options.data.call(this.$proxyInstance);
 
             if (!isObject(data)) {
                 warn('data 必须放回一个{}格式对象');
@@ -199,7 +204,8 @@ export default class VuiComponent {
         if (this._options.ast) {
             code = createCode(this._options.ast, null, []);
         } else if (typeof this._options.render === 'function') {
-            code = createCode(this._options.render(parseHTML, this.$proxyInstance), null, []);
+            // 如果是自定义render函数，则初始化时不构建，放在watcher.get时创建
+            code = '';
         } else {
             code = createCode({ type: 1, tagName: 'comment' }, null, []);
             warn('缺少html视图模板');
@@ -239,9 +245,8 @@ export default class VuiComponent {
         // 将组件dom缓存起来
         // componentCache[this.cid] = this;
 
-        // 自定义组件
-        this._componentState = CREATED;
         // 挂载完毕
+        this._componentState = CREATED;
         this._options.mounted.call(this.$proxyInstance);
     }
     _update(vnode: VElement) {

@@ -38,6 +38,7 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
 
     let $component: VuiComponent | ComponentOptions;
     // slotNodes.push(createElement.call(this, 'comment', null, 'v-slot'));
+
     // 如果是更新（即执行_reRender时候）则不创建组件，等待diff后再确认是否创建
     if (__option__.update) {
         $component = {
@@ -54,8 +55,21 @@ function createComponent(componentName: string, attr: AnyObj = {}, slotNodes: VE
             $slots: slotNodes
         });
 
-        $vuip.$children.push($component);
+        // $vuip.$children.push($component);
     }
+
+    // 设置slot中组件的$parent，如：<Row><Col/></Row>,则col组件的$parent实例应该是row组件实例
+    /* if ($component instanceof VuiComponent) {
+        slotNodes.forEach(el => {
+            if (el.tagName.indexOf('component-') === 0 && ) {
+                if (el.child) {
+                    el.child.$parent = $component as VuiComponent;
+                    ($component as VuiComponent).$children.push(el.child);
+                    $vuip
+                }
+            }
+        });
+    } */
 
     // 当前this指with所绑定的顶级作用域
     return createElement(`component-${componentConfig.name}`, { on: events }, $component, $vuip);

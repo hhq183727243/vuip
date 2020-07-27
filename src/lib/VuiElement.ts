@@ -113,10 +113,10 @@ export class VElement {
             if (this.child && !(this.child instanceof VuiComponent)) {
                 this.child = new VuiComponent(this.child);
 
-                if (this.child.$parent) {
+                /* if (this.child.$parent) {
                     // 将组件添加到付组件实例的$children中
                     this.child.$parent.$children.push(this.child);
-                }
+                } */
             }
 
             el = (this.child as VuiComponent).$el as HTMLElement;

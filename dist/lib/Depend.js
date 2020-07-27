@@ -19,7 +19,6 @@ var Depend = /** @class */ (function () {
             this.subs[key].push(w);
             this.subsId[key].push(w.uid);
         }
-        // 为watcher收集观察属性，然后对新旧数据进行对比，去除无效订阅
         w.addDep(key, this);
     };
     Depend.prototype.notice = function (key) {

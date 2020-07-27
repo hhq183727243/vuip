@@ -84,10 +84,10 @@ var VElement = /** @class */ (function () {
             // 渲染子组件
             if (this.child && !(this.child instanceof VuiComponent_1.default)) {
                 this.child = new VuiComponent_1.default(this.child);
-                if (this.child.$parent) {
+                /* if (this.child.$parent) {
                     // 将组件添加到付组件实例的$children中
                     this.child.$parent.$children.push(this.child);
-                }
+                } */
             }
             el = this.child.$el;
         }

@@ -57,7 +57,7 @@ var Vuip = /** @class */ (function () {
         }
         this.componentMap.set(name, option);
     };
-    // 穿件组件
+    // 创建组件
     Vuip.mountComponent = function (option, props, $parentEl) {
         if (props === void 0) { props = {}; }
         var $compt = h(option, props);

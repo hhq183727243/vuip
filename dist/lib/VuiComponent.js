@@ -92,6 +92,9 @@ var VuiComponent = /** @class */ (function () {
             $vuip: this
         }; // 代理render作用域
         this.$proxyInstance = {}; // 代理实例
+        if (this.$parent) {
+            this.$parent.$children.push(this);
+        }
         this._options.willCreate.call(this);
         this._initProxyInstance();
         this._initStore();
@@ -137,7 +140,7 @@ var VuiComponent = /** @class */ (function () {
     VuiComponent.prototype._initData = function () {
         var data = {};
         if (typeof this._options.data === 'function') {
-            data = this._options.data();
+            data = this._options.data.call(this.$proxyInstance);
             if (!uitls_1.isObject(data)) {
                 uitls_1.warn('data 必须放回一个{}格式对象');
                 data = {};
@@ -195,7 +198,8 @@ var VuiComponent = /** @class */ (function () {
             code = VuiCreateCode_1.default(this._options.ast, null, []);
         }
         else if (typeof this._options.render === 'function') {
-            code = VuiCreateCode_1.default(this._options.render(parseHTML_1.default, this.$proxyInstance), null, []);
+            // 如果是自定义render函数，则初始化时不构建，放在watcher.get时创建
+            code = '';
         }
         else {
             code = VuiCreateCode_1.default({ type: 1, tagName: 'comment' }, null, []);
@@ -228,9 +232,8 @@ var VuiComponent = /** @class */ (function () {
         new Watcher_1.default(this, mount, true);
         // 将组件dom缓存起来
         // componentCache[this.cid] = this;
-        // 自定义组件
-        this._componentState = CREATED;
         // 挂载完毕
+        this._componentState = CREATED;
         this._options.mounted.call(this.$proxyInstance);
     };
     VuiComponent.prototype._update = function (vnode) {
