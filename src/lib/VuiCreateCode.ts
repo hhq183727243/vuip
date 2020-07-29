@@ -8,6 +8,7 @@ const EVENTS = [
     'onchange', 'oninput', 'onblur', 'onfocus', 'onreset', 'onsubmit', 'onselect',
     'onresize', 'onscroll'
 ];
+let eventUid = 0; // 事件uid，解决绑定同个事件时，后面事件覆盖前事件
 
 // 文本解析
 function textParse(text: string): string {
@@ -75,10 +76,37 @@ function createCode(option: AstOptions, prevOption: AstOptions | null, condition
     Object.keys(attr).forEach((key, index) => {
         if (EVENTS.includes(key)) {
             const { name, params } = parseFun(attr[key]);
-            _eventStr += `"${key.replace('on', '')}": function($event){ return ${name}(${params !== '' ? (params + ',') : ''}$event)},`;
-        } else if (key === 'v-model' && type === 1) {
+            _eventStr += `"${key.replace('on', '')}_${eventUid++}": function($event){ return ${name}(${params !== '' ? (params + ',') : ''}$event)},`;
+        } else if (key === 'v-model' && type === 1 && tagName === 'input') {
             // 普通标签v-model指令，直接监听input事件
-            _eventStr += `"input": function($event){ ${attr[key]}=$event.target.value; },`;
+            if (attr['type'] === 'checkbox') {
+                _eventStr += `"change_${eventUid++}": function($event){ 
+                    var $$a = ${attr[key]};
+                    var $$el = $event.target;
+                    var $$v = $$el.value;
+                    var $$c = $$el.checked ? (true) : (false);
+                    if (Array.isArray($$a)) {
+                        var $$i = $$a.indexOf($$v);
+                        if ($$el.checked) {
+                            $$i < 0 && (${attr[key]} = $$a.concat([$$v]))
+                        } else {
+                            $$i > -1 && (${attr[key]} = $$a.slice(0, $$i).concat($$a.slice($$i + 1)))
+                        }
+                    } else {
+                        ${attr[key]} = $$c;
+                    }
+                },`;
+            } else {
+                _eventStr += `"input_${eventUid++}": function($event){ ${attr[key]}=$event.target.value; },`;
+            }
+
+            if (attr['type'] === 'text') {
+                _attrStr += `"value": ${attr[key]},`;
+            } else if (attr['type'] === 'radio') {
+                _attrStr += `"checked": ${attr[key]} === "${attr['value']}",`;
+            } else if (attr['type'] === 'checkbox') {
+                _attrStr += `"checked": Array.isArray(${attr[key]}) ? ${attr[key]}.indexOf("${attr['value']}") > -1 : (${attr[key]}),`;
+            }
         } else if (key === 'v-model' && type === 3) {
             // 组件v-model指令，需要主动执行emit('input')来触发父组件value更新
             _attrStr += `"input": function(_v){ ${attr[key]}=_v; },`;
@@ -94,7 +122,7 @@ function createCode(option: AstOptions, prevOption: AstOptions | null, condition
                 if (typeof attr[key] === 'string') {
                     _attrStr += `"${key}": "${attr[key].replace(/\r\n|\r|\n/g, ' ')}",`; // 字符串
                 } else {
-                    _attrStr += `"${key}": ${attr[key]},`; // boolean 值
+                    _attrStr += `"${key}": ${attr[key]},`; // boolean 值,在解析ast时，如果只有属性，则值就是true
                 }
             }
         }

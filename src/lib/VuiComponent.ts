@@ -9,8 +9,9 @@ import { ComponentOptions, ComponentConfig, Lifecycle, AnyObj } from './interfac
 import { isObject, warn, isUnd, isFunc } from './uitls';
 import proxyObj from './proxy';
 
-const UNCREATED: string = 'UNCREATED';
-const CREATED: string = 'CREATED';
+const UNCREATED: string = 'uncreate'; // 未装载
+const CREATED: string = 'created'; // 已装载
+const UNINSTALL: string = 'uninstall'; // 已卸载
 // const componentCache: {
 //     [x: string]: VuiComponent
 // } = {};
@@ -105,6 +106,7 @@ export default class VuiComponent {
     watchers: Array<Watcher>;
     componentName: string;
     _options: ComponentConfig;
+    $parentVNode: VElement | undefined; // 组件所对应的标签，如<Button>组件，实例的$parentVNode就是Button对应的VElement实例
     $el: Element | Text | Comment | null;
     $refs: AnyObj; //el节点引用
     $parent: VuiComponent | undefined;
@@ -350,7 +352,7 @@ export default class VuiComponent {
         $children.forEach(comp => {
             comp.uninstall();
         });
-
+        this._componentState = UNINSTALL;
         this._options.unmounted.call(this.$proxyInstance);
     }
 }

@@ -16,6 +16,7 @@ function createFnInvoker(fns: Function, vm: VuiComponent) {
             return invokeWithErrorHandling(fns, arguments, vm)
         }
     }
+    invoker.remove = () => { };
     invoker.fns = fns;
     return invoker
 }
@@ -43,6 +44,11 @@ interface VElementParam {
 
 type _Element = HTMLElement | Text | Comment;
 
+
+interface FunInvoker {
+    fns: Function,
+    remove: Function,
+}
 declare global {
     interface Text {
         parentEl: _Element
@@ -53,6 +59,17 @@ declare global {
     interface HTMLElement {
         parentEl: _Element
     }
+}
+
+function setParentVNode(parent: VElement, children: VElement[]) {
+    // 为子节点设置父节点
+    children.forEach(item => {
+        if (Array.isArray(item)) {
+            setParentVNode(parent, item);
+        } else {
+            item.parentVNode = parent;
+        }
+    });
 }
 
 /**
@@ -66,13 +83,14 @@ export class VElement {
     constructor(options: VElementParam) {
         const { tagName, option, children, context } = options;
         const { attrs, on } = option || {};
+        this.parentVNode = undefined;
         this.tagName = tagName; // 标签名
         this.context = context; // dom 所在组件实例
         this.text = undefined; // 文本节点内容
         this.children = undefined; // 子节点
         this.on = on; // dom事件集合
         this.attrs = attrs; // dom属性集合
-        this.events = [];
+        this.events = {};
         // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined && typeof children === 'string') {
             this.text = children;
@@ -85,14 +103,17 @@ export class VElement {
         } else {
             // 普通标签节点
             this.children = children;
+
+            // 为子节点设置父节点
+            setParentVNode(this, this.children as VElement[]);
         }
     }
-
+    parentVNode: VElement | undefined;
     tagName: string;
     context: VuiComponent;
     text?: string | undefined;
     children: Children;
-    on: { [x: string]: Function };
+    on: { [x: string]: () => {} };
     attrs: AnyObj;
     child?: VuiComponent | ComponentOptions;
     elm?: _Element;
@@ -118,7 +139,8 @@ export class VElement {
                     this.child.$parent.$children.push(this.child);
                 } */
             }
-
+            // 设置组件实例所对应的VElement实例2020-7-27 14:18:44
+            (this.child as VuiComponent).$parentVNode = this;
             el = (this.child as VuiComponent).$el as HTMLElement;
         } else {
             // 普通标签节点
@@ -133,7 +155,7 @@ export class VElement {
         this.elm = el; // 虚拟节点对应的DOM节点
 
         this.setAttrs();
-        this.bindEvents();
+        this.updateListeners();
 
         /* if (this.attrs && this.attrs['v-model']) {
             el.addEventListener('input', (e: Event) => {
@@ -177,24 +199,43 @@ export class VElement {
             });
         }
     }
-    events: Array<Function>;
-    bindEvents() {
+    events: { [x: string]: FunInvoker };//Array<Function>;
+    updateListeners() {
         // 解除事件
-        this.events.forEach(func => {
+        /*  this.events.forEach(func => {
             func();
-        });
+        }); */
+        const el = this.elm as HTMLElement;
 
         // 事件绑定
-        this.events = Object.keys(this.on || {}).map(eventName => {
-            const cut = createFnInvoker(this.on[eventName], this.context);
-            const el = this.elm as HTMLElement;
-            el.addEventListener(eventName, cut, false);
+        for (let key in (this.on || {})) {
+            const eventName = key.replace(/_.*/, ''); // 去除eventUid后缀
 
-            // 添加事件移除操作
-            return () => {
-                el.removeEventListener(eventName, cut);
+            if (!this.events[key] || !this.events[key].fns) {
+                // 如果有新事件则进行绑定
+                const cut = createFnInvoker(this.on[key], this.context);
+                cut.remove = this.addEventListener(el, eventName, cut);
+                this.events[key] = cut;
+            } else {
+                // 否则触发函数替换为最新函数
+                this.events[key].fns = this.on[key];
             }
-        })
+        }
+
+        // 卸载无用旧事件
+        for (let key in this.events) {
+            if (!this.on[key]) {
+                this.events[key].remove();
+            }
+        }
+    }
+    addEventListener(el: HTMLElement, on: string, func: () => {}, capture: boolean = false) {
+        el.addEventListener(on, func, capture);
+
+        // 添加事件移除操作
+        return () => {
+            el.removeEventListener(on, func);
+        }
     }
     // 更新节点属性
     updateAttrs(attrs: AnyObj) {
@@ -214,8 +255,13 @@ export class VElement {
                     return;
                 }
 
-                if (this.tagName === 'input' && key === 'value') {
+                if (key === 'value' && this.tagName === 'input' && this.attrs['type'] === 'text') {
                     (this.elm as HTMLInputElement).value = this.attrs[key];
+                    return;
+                }
+
+                if (key === 'checked' && this.tagName === 'input' && (this.attrs['type'] === 'radio' || this.attrs['type'] === 'checkbox')) {
+                    (this.elm as HTMLInputElement).checked = this.attrs[key];
                     return;
                 }
 

@@ -15,7 +15,7 @@ interface Patche {
     };
     point?: (VElement | Array<VElement>)[] | undefined;
     on?: {
-        [x: string]: Function;
+        [x: string]: () => {};
     };
 }
 export default function diff(oldVertualDom: VElement, newVertualDom: VElement): Patche[];

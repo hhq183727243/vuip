@@ -18,6 +18,7 @@ export default class VuiComponent {
     watchers: Array<Watcher>;
     componentName: string;
     _options: ComponentConfig;
+    $parentVNode: VElement | undefined;
     $el: Element | Text | Comment | null;
     $refs: AnyObj;
     $parent: VuiComponent | undefined;

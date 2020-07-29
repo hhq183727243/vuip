@@ -250,7 +250,7 @@ interface Patche {
     newAttrs?: { [x: string]: string };
     oldAttrs?: { [x: string]: string };
     point?: (VElement | Array<VElement>)[] | undefined;
-    on?: { [x: string]: Function }
+    on?: { [x: string]: () => {} }
 }
 
 export default function diff(oldVertualDom: VElement, newVertualDom: VElement) {
@@ -319,7 +319,7 @@ export function updateDom(patches: Patche[]) {
             item.node.updateAttrs(item.newAttrs);
         } else if (item.type === 'EVENTS' && item.node && item.on) {
             item.node.on = item.on;
-            item.node.bindEvents();
+            item.node.updateListeners();
         }
     });
 }

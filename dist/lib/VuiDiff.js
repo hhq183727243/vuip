@@ -283,7 +283,7 @@ function updateDom(patches) {
         }
         else if (item.type === 'EVENTS' && item.node && item.on) {
             item.node.on = item.on;
-            item.node.bindEvents();
+            item.node.updateListeners();
         }
     });
 }

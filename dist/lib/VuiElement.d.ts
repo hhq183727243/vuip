@@ -7,6 +7,10 @@ interface VElementParam {
     context: VuiComponent;
 }
 declare type _Element = HTMLElement | Text | Comment;
+interface FunInvoker {
+    fns: Function;
+    remove: Function;
+}
 declare global {
     interface Text {
         parentEl: _Element;
@@ -27,20 +31,24 @@ declare global {
  * */
 export declare class VElement {
     constructor(options: VElementParam);
+    parentVNode: VElement | undefined;
     tagName: string;
     context: VuiComponent;
     text?: string | undefined;
     children: Children;
     on: {
-        [x: string]: Function;
+        [x: string]: () => {};
     };
     attrs: AnyObj;
     child?: VuiComponent | ComponentOptions;
     elm?: _Element;
     render(parentEl?: _Element): _Element;
     renderVList(parentEl: _Element, els: Children): void;
-    events: Array<Function>;
-    bindEvents(): void;
+    events: {
+        [x: string]: FunInvoker;
+    };
+    updateListeners(): void;
+    addEventListener(el: HTMLElement, on: string, func: () => {}, capture?: boolean): () => void;
     updateAttrs(attrs: AnyObj): void;
     setAttrs(): void;
 }

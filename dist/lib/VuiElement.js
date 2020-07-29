@@ -19,6 +19,7 @@ function createFnInvoker(fns, vm) {
             return invokeWithErrorHandling(fns, arguments, vm);
         }
     }
+    invoker.remove = function () { };
     invoker.fns = fns;
     return invoker;
 }
@@ -32,6 +33,17 @@ function invokeWithErrorHandling(handler, args, vm) {
     }
     return res;
 }
+function setParentVNode(parent, children) {
+    // 为子节点设置父节点
+    children.forEach(function (item) {
+        if (Array.isArray(item)) {
+            setParentVNode(parent, item);
+        }
+        else {
+            item.parentVNode = parent;
+        }
+    });
+}
 /**
  * 节点构造函数
  * @param tagName 标签名，组件名
@@ -43,13 +55,14 @@ var VElement = /** @class */ (function () {
     function VElement(options) {
         var tagName = options.tagName, option = options.option, children = options.children, context = options.context;
         var _a = option || {}, attrs = _a.attrs, on = _a.on;
+        this.parentVNode = undefined;
         this.tagName = tagName; // 标签名
         this.context = context; // dom 所在组件实例
         this.text = undefined; // 文本节点内容
         this.children = undefined; // 子节点
         this.on = on; // dom事件集合
         this.attrs = attrs; // dom属性集合
-        this.events = [];
+        this.events = {};
         // 如果 tagName === undefined ，则说明为文本节点，children为文本内容
         if (tagName === undefined && typeof children === 'string') {
             this.text = children;
@@ -65,6 +78,8 @@ var VElement = /** @class */ (function () {
         else {
             // 普通标签节点
             this.children = children;
+            // 为子节点设置父节点
+            setParentVNode(this, this.children);
         }
     }
     VElement.prototype.render = function (parentEl) {
@@ -89,6 +104,8 @@ var VElement = /** @class */ (function () {
                     this.child.$parent.$children.push(this.child);
                 } */
             }
+            // 设置组件实例所对应的VElement实例2020-7-27 14:18:44
+            this.child.$parentVNode = this;
             el = this.child.$el;
         }
         else {
@@ -101,7 +118,7 @@ var VElement = /** @class */ (function () {
         }
         this.elm = el; // 虚拟节点对应的DOM节点
         this.setAttrs();
-        this.bindEvents();
+        this.updateListeners();
         /* if (this.attrs && this.attrs['v-model']) {
             el.addEventListener('input', (e: Event) => {
                 console.log(e);
@@ -147,22 +164,40 @@ var VElement = /** @class */ (function () {
             });
         }
     };
-    VElement.prototype.bindEvents = function () {
-        var _this = this;
+    VElement.prototype.updateListeners = function () {
         // 解除事件
-        this.events.forEach(function (func) {
+        /*  this.events.forEach(func => {
             func();
-        });
+        }); */
+        var el = this.elm;
         // 事件绑定
-        this.events = Object.keys(this.on || {}).map(function (eventName) {
-            var cut = createFnInvoker(_this.on[eventName], _this.context);
-            var el = _this.elm;
-            el.addEventListener(eventName, cut, false);
-            // 添加事件移除操作
-            return function () {
-                el.removeEventListener(eventName, cut);
-            };
-        });
+        for (var key in (this.on || {})) {
+            var eventName = key.replace(/_.*/, ''); // 去除eventUid后缀
+            if (!this.events[key] || !this.events[key].fns) {
+                // 如果有新事件则进行绑定
+                var cut = createFnInvoker(this.on[key], this.context);
+                cut.remove = this.addEventListener(el, eventName, cut);
+                this.events[key] = cut;
+            }
+            else {
+                // 否则触发函数替换为最新函数
+                this.events[key].fns = this.on[key];
+            }
+        }
+        // 卸载无用旧事件
+        for (var key in this.events) {
+            if (!this.on[key]) {
+                this.events[key].remove();
+            }
+        }
+    };
+    VElement.prototype.addEventListener = function (el, on, func, capture) {
+        if (capture === void 0) { capture = false; }
+        el.addEventListener(on, func, capture);
+        // 添加事件移除操作
+        return function () {
+            el.removeEventListener(on, func);
+        };
     };
     // 更新节点属性
     VElement.prototype.updateAttrs = function (attrs) {
@@ -181,8 +216,12 @@ var VElement = /** @class */ (function () {
                     _this.context.$refs[_this.attrs[key]] = _this.elm;
                     return;
                 }
-                if (_this.tagName === 'input' && key === 'value') {
+                if (key === 'value' && _this.tagName === 'input' && _this.attrs['type'] === 'text') {
                     _this.elm.value = _this.attrs[key];
+                    return;
+                }
+                if (key === 'checked' && _this.tagName === 'input' && (_this.attrs['type'] === 'radio' || _this.attrs['type'] === 'checkbox')) {
+                    _this.elm.checked = _this.attrs[key];
                     return;
                 }
                 if (_this.tagName === 'img' && key === 'src' && _this.attrs[key] && typeof _this.attrs[key] === 'object') {

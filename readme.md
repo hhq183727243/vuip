@@ -201,3 +201,10 @@ yarn build
 2. 支持v-model双向绑定功能
 3. setData性能优化
 ```
+
++ 1.1.2
+```
+1. checkbox、radio实现v-model支持
+2. 组件v-model实现
+3. 优化事件绑定机制、解决绑定重复事件时后者覆盖前者问题
+```

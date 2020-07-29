@@ -28,8 +28,9 @@ var parseHTML_1 = __importDefault(require("./parseHTML"));
 var VuiCreateCode_1 = __importDefault(require("./VuiCreateCode"));
 var uitls_1 = require("./uitls");
 var proxy_1 = __importDefault(require("./proxy"));
-var UNCREATED = 'UNCREATED';
-var CREATED = 'CREATED';
+var UNCREATED = 'uncreate'; // 未装载
+var CREATED = 'created'; // 已装载
+var UNINSTALL = 'uninstall'; // 已卸载
 // const componentCache: {
 //     [x: string]: VuiComponent
 // } = {};
@@ -329,6 +330,7 @@ var VuiComponent = /** @class */ (function () {
         $children.forEach(function (comp) {
             comp.uninstall();
         });
+        this._componentState = UNINSTALL;
         this._options.unmounted.call(this.$proxyInstance);
     };
     return VuiComponent;
