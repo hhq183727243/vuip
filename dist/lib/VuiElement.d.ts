@@ -31,6 +31,7 @@ declare global {
  * */
 export declare class VElement {
     constructor(options: VElementParam);
+    uid: number;
     parentVNode: VElement | undefined;
     tagName: string;
     context: VuiComponent;

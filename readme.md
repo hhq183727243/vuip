@@ -7,9 +7,9 @@
 npm install vuip --save
 ```
 ## 使用说明
-需配合vui-html-loader 使用，来编译.html组件
+需配合vuip-html-loader 使用，来编译.html组件
 ``` bash
-npm install vui-html-loader --save
+npm install vuip-html-loader --save
 ```
 在你的项目的webpack的rules配置中引入vui-html-loader
 ```
@@ -207,4 +207,9 @@ yarn build
 1. checkbox、radio实现v-model支持
 2. 组件v-model实现
 3. 优化事件绑定机制、解决绑定重复事件时后者覆盖前者问题
+```
+
++ 1.1.3
+```
+1. bug修复
 ```

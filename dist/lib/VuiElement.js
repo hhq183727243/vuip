@@ -40,10 +40,13 @@ function setParentVNode(parent, children) {
             setParentVNode(parent, item);
         }
         else {
-            item.parentVNode = parent;
+            if (item.parentVNode === undefined) {
+                item.parentVNode = parent;
+            }
         }
     });
 }
+var uid = 0;
 /**
  * 节点构造函数
  * @param tagName 标签名，组件名
@@ -55,6 +58,7 @@ var VElement = /** @class */ (function () {
     function VElement(options) {
         var tagName = options.tagName, option = options.option, children = options.children, context = options.context;
         var _a = option || {}, attrs = _a.attrs, on = _a.on;
+        this.uid = uid++;
         this.parentVNode = undefined;
         this.tagName = tagName; // 标签名
         this.context = context; // dom 所在组件实例

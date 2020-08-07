@@ -55,6 +55,7 @@ function walk(oldNode: VElement | VElement[], newNode: VElement | VElement[], pa
     if (Array.isArray(oldNode)) {
         diffChildren(oldNode, Array.isArray(newNode) ? newNode : [newNode], patches);
     } else if (Array.isArray(newNode)) {
+        console.log('===================== 这边应该不会进来了===================')
         diffChildren(Array.isArray(oldNode) ? oldNode : [oldNode], newNode, patches);
     } else if (!Array.isArray(oldNode) && !Array.isArray(newNode)) {
         if (newNode === undefined) {
@@ -304,8 +305,9 @@ export function updateDom(patches: Patche[]) {
         } else if (item.type === 'ADD' && item.newNodes) {
             // oldVDomMap[key].elm.parentNode.replaceChild(newVDomMap[key].render(), oldVDomMap[key].elm);
             const fragment = document.createDocumentFragment();
-            item.newNodes.forEach(vd => {
-                fragment.appendChild((vd as VElement).render());
+            item.newNodes.forEach((vNode) => {
+                (vNode as VElement).parentVNode = item.prevNode?.parentVNode;
+                fragment.appendChild((vNode as VElement).render());
             });
 
             if (item.prevNode) {

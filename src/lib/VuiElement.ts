@@ -67,11 +67,14 @@ function setParentVNode(parent: VElement, children: VElement[]) {
         if (Array.isArray(item)) {
             setParentVNode(parent, item);
         } else {
-            item.parentVNode = parent;
+            if (item.parentVNode === undefined) {
+                item.parentVNode = parent;
+            }
         }
     });
 }
 
+let uid = 0;
 /**
  * 节点构造函数
  * @param tagName 标签名，组件名
@@ -83,6 +86,7 @@ export class VElement {
     constructor(options: VElementParam) {
         const { tagName, option, children, context } = options;
         const { attrs, on } = option || {};
+        this.uid = uid++;
         this.parentVNode = undefined;
         this.tagName = tagName; // 标签名
         this.context = context; // dom 所在组件实例
@@ -108,6 +112,7 @@ export class VElement {
             setParentVNode(this, this.children as VElement[]);
         }
     }
+    uid: number;
     parentVNode: VElement | undefined;
     tagName: string;
     context: VuiComponent;
